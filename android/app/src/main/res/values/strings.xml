@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CAM4ME</string>
+    <string name="title_activity_main">CAM4ME</string>
+    <string name="package_name">com.cam4me.app</string>
+    <string name="custom_url_scheme">com.cam4me.app</string>
+</resources>
