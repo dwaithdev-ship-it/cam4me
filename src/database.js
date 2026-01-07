@@ -1,165 +1,230 @@
-import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
+
 import { Capacitor } from '@capacitor/core';
 
 class DatabaseService {
   constructor() {
-    this.sqlite = new SQLiteConnection(CapacitorSQLite);
-    this.db = null;
-    this.dbName = 'chatcam.db';
     this.isWeb = Capacitor.getPlatform() === 'web';
+    this.apiUrl = this.isWeb ? '/api' : 'http://localhost:5000/api';
+  }
+
+  async fetchWithTimeout(url, options = {}, timeout = 5000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
+    } catch (err) {
+      clearTimeout(id);
+      throw err;
+    }
   }
 
   async initialize() {
+    console.log('Database service initializing...');
     try {
-      if (this.isWeb) {
-        // For web, use localStorage as fallback
-        console.log('Running on web, using localStorage');
+      // 1.5s timeout for initial check to avoid long blocking
+      const resp = await this.fetchWithTimeout(`${this.apiUrl}/users`, { method: 'GET' }, 1500);
+      if (resp.ok) {
+        console.log('Backend connection successful');
+
+        const users = await resp.json();
+
+        if (this.isWeb && (!users || users.length === 0)) {
+          console.log('Database empty, attempting migration...');
+          await this.migrateFromLocalStorage(true);
+        } else if (this.isWeb && !localStorage.getItem('postgres_migrated')) {
+          this.migrateFromLocalStorage(false);
+        }
         return true;
       }
-
-      // Create database connection
-      this.db = await this.sqlite.createConnection(
-        this.dbName,
-        false,
-        'no-encryption',
-        1,
-        false
-      );
-
-      await this.db.open();
-
-      // Create table if not exists
-      const createTableQuery = `
-        CREATE TABLE IF NOT EXISTS records (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          mobile TEXT NOT NULL,
-          village TEXT NOT NULL,
-          mandal TEXT NOT NULL,
-          district TEXT NOT NULL,
-          state TEXT NOT NULL,
-          timestamp TEXT NOT NULL
-        );
-      `;
-
-      await this.db.execute(createTableQuery);
-      console.log('Database initialized successfully');
-      return true;
-    } catch (error) {
-      console.error('Database initialization error:', error);
+      return false;
+    } catch (err) {
+      console.warn('Backend connection failed/timed out (' + err.message + '). Using offline/fallback mode if available.');
       return false;
     }
   }
 
-  async insertRecord(data) {
+  async migrateFromLocalStorage(force = false) {
+    const migrated = localStorage.getItem('postgres_migrated');
+    if (migrated && !force) return;
+
+    console.log('Starting migration from localStorage to PostgreSQL...');
     try {
-      if (this.isWeb) {
-        // Fallback to localStorage for web
-        const records = JSON.parse(localStorage.getItem('chatcam_records') || '[]');
-        const record = {
-          ...data,
-          id: Date.now(),
-          timestamp: new Date().toLocaleString()
-        };
-        records.push(record);
-        localStorage.setItem('chatcam_records', JSON.stringify(records));
-        return record;
+      // Migrate users
+      const usersStr = localStorage.getItem('sq_users');
+      if (usersStr) {
+        const users = JSON.parse(usersStr);
+        for (const uid in users) {
+          await this.saveUser(users[uid]);
+        }
       }
 
-      const query = `
-        INSERT INTO records (name, mobile, village, mandal, district, state, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?);
-      `;
+      // Migrate posts
+      const postsStr = localStorage.getItem('sq_posts');
+      if (postsStr) {
+        const posts = JSON.parse(postsStr);
+        for (const post of posts) {
+          await this.savePost(post);
+        }
+      }
 
-      const timestamp = new Date().toLocaleString();
-      const values = [
-        data.name,
-        data.mobile,
-        data.village,
-        data.mandal,
-        data.district,
-        data.state,
-        timestamp
-      ];
+      // Migrate ads
+      const adsStr = localStorage.getItem('sq_ads');
+      if (adsStr) {
+        const ads = JSON.parse(adsStr);
+        for (const ad of ads) {
+          await this.saveAd(ad);
+        }
+      }
 
-      const result = await this.db.run(query, values);
-      console.log('Record inserted successfully:', result);
-      
-      return {
-        ...data,
-        id: result.changes.lastId,
-        timestamp
-      };
-    } catch (error) {
-      console.error('Insert record error:', error);
-      throw error;
+      // Migrate feedbacks
+      const feedbacksStr = localStorage.getItem('sq_feedbacks');
+      if (feedbacksStr) {
+        const feedbacks = JSON.parse(feedbacksStr);
+        for (const fb of feedbacks) {
+          await this.saveFeedback(fb);
+        }
+      }
+
+      localStorage.setItem('postgres_migrated', 'true');
+      console.log('Migration completed');
+    } catch (err) {
+      console.error('Migration failed:', err);
     }
   }
 
-  async getAllRecords() {
+  async saveUser(userData) {
     try {
-      if (this.isWeb) {
-        // Fallback to localStorage for web
-        return JSON.parse(localStorage.getItem('chatcam_records') || '[]');
-      }
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('Error saving user:', err);
+      return userData;
+    }
+  }
 
-      const query = 'SELECT * FROM records ORDER BY id DESC;';
-      const result = await this.db.query(query);
-      
-      return result.values || [];
-    } catch (error) {
-      console.error('Get all records error:', error);
+  async getUser(uid) {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/users/${uid}`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      console.error('Error getting user:', err);
+      return null;
+    }
+  }
+
+  async getAllUsers() {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/users`);
+      return await res.json();
+    } catch (err) {
+      console.error('Error getting all users:', err);
       return [];
     }
   }
 
-  async deleteRecord(id) {
+  async savePost(post) {
     try {
-      if (this.isWeb) {
-        // Fallback to localStorage for web
-        const records = JSON.parse(localStorage.getItem('chatcam_records') || '[]');
-        const filtered = records.filter(record => record.id !== id);
-        localStorage.setItem('chatcam_records', JSON.stringify(filtered));
-        return true;
-      }
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(post)
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('Error saving post:', err);
+      return post;
+    }
+  }
 
-      const query = 'DELETE FROM records WHERE id = ?;';
-      await this.db.run(query, [id]);
-      console.log('Record deleted successfully');
-      return true;
-    } catch (error) {
-      console.error('Delete record error:', error);
+  async getPosts() {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/posts`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.error('Error getting posts:', err);
+      return [];
+    }
+  }
+
+  async deletePostsByUser(uid) {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/posts/user/${uid}`, { method: 'DELETE' });
+      const data = await res.json();
+      return data.success;
+    } catch (err) {
       return false;
     }
   }
 
-  async clearAllRecords() {
+  async saveAd(ad) {
     try {
-      if (this.isWeb) {
-        // Fallback to localStorage for web
-        localStorage.removeItem('chatcam_records');
-        return true;
-      }
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/ads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ad)
+      });
+      return await res.json();
+    } catch (err) {
+      return ad;
+    }
+  }
 
-      const query = 'DELETE FROM records;';
-      await this.db.run(query);
-      console.log('All records cleared successfully');
-      return true;
-    } catch (error) {
-      console.error('Clear all records error:', error);
+  async getAds() {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/ads`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      return [];
+    }
+  }
+
+  async deleteAd(id) {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/ads/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      return data.success;
+    } catch (err) {
       return false;
     }
   }
 
-  async close() {
+  async saveFeedback(feedback) {
     try {
-      if (this.db && !this.isWeb) {
-        await this.db.close();
-        console.log('Database closed');
-      }
-    } catch (error) {
-      console.error('Close database error:', error);
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/feedbacks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedback)
+      });
+      return await res.json();
+    } catch (err) {
+      return feedback;
     }
+  }
+
+  async getAllFeedbacks() {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/feedbacks`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      return [];
+    }
+  }
+
+  async deleteUser(uid) {
+    return false;
   }
 }
 

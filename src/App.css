@@ -1,10 +1,184 @@
+/* Center the app on desktop like a mobile device */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  height: 100%;
+}
+
+body {
+  background-color: #111;
+  margin: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Hide scrollbars globally but keep functionality */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+* {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* ================= ROOT ================= */
+
+#root {
+  width: 100%;
+  /* Inshorts-like Mobile Constraints */
+  max-width: 420px;
+  max-height: 820px;
+
+  /* Center on screen */
+  margin: auto;
+  position: relative;
+  /* absolute centering needs container, but auto margin works on flex body */
+
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: #1a2332;
+  overflow: hidden;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+
+  /* Ensure it looks like a phone */
+  border-radius: 0;
+}
+
+/* If screen is larger than constraints, center it vertically too */
+@media (min-height: 821px) {
+  #root {
+    border-radius: 20px;
+    /* Optional: adds rounded corners like a phone */
+    height: 820px;
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+}
+
+/* ================= APP CONTAINER ================= */
+
 .app-container {
-  min-height: 100vh;
-  background: linear-gradient(180deg, #1a2332 0%, #2d3e5f 30%, #4a3859 60%, #6b2d5c 80%, #8b2e5e 100%);
+  width: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
+  background: linear-gradient(180deg,
+      #1a2332 0%,
+      #2d3e5f 30%,
+      #4a3859 60%,
+      #6b2d5c 80%,
+      #8b2e5e 100%);
+  min-height: 0;
+  /* Important for flex child scrolling */
   overflow: hidden;
+}
+
+/* ================= MOBILE FIX ================= */
+
+@media (max-width: 480px) {
+  body {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  #root {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    box-shadow: none;
+  }
+
+  .app-container {
+    height: 100%;
+  }
+}
+
+/* ================= CONTENT ================= */
+
+.content {
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 0;
+  padding-bottom: 20px;
+  /* Reduced further */
+  -webkit-overflow-scrolling: touch;
+}
+
+.content::-webkit-scrollbar {
+  display: none;
+}
+
+.common-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 12px;
+  background: rgba(10, 22, 40, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 50px;
+  z-index: 100;
+}
+
+.header-btn {
+  background: transparent;
+  border: none;
+  color: #00F5FF;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.header-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(0.95);
+}
+
+.header-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.95);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(0.95);
+    opacity: 0.8;
+  }
 }
 
 .status-bar {
@@ -31,20 +205,23 @@
 
 .logo-container {
   text-align: center;
-  margin-bottom: 40px;
-  margin-top: 20px;
+  margin-bottom: 8px;
+  margin-top: 5px;
+  flex-shrink: 0;
 }
 
 .logo-image {
-  width: 120px;
-  height: 120px;
+  width: 55px;
+  height: 55px;
+  max-width: 12vh;
+  max-height: 12vh;
   object-fit: contain;
-  margin-bottom: 12px;
+  margin-bottom: 5px;
   filter: drop-shadow(0 0 15px rgba(46, 173, 95, 0.5));
 }
 
 .app-title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   color: white;
   margin: 0;
@@ -54,16 +231,18 @@
 
 .form {
   width: 100%;
-  max-width: 400px;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  justify-content: flex-start;
+  padding-top: 5px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .form-group-horizontal {
@@ -130,7 +309,7 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   color: white;
   font-size: 15px;
   outline: none;
@@ -157,7 +336,7 @@
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: 10px;
   transition: all 0.3s ease;
   text-transform: capitalize;
 }
@@ -236,7 +415,8 @@
   gap: 12px;
 }
 
-.back-btn, .clear-btn {
+.back-btn,
+.clear-btn {
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -397,23 +577,7 @@
   padding: 10px;
 }
 
-.records-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.records-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-
-.records-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-}
-
-.records-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
-}
+/* Records scrollbar removed */
 
 .no-records {
   text-align: center;
@@ -533,14 +697,19 @@
 }
 
 .camera-logo-gradient {
-  margin-bottom: 30px;
-  filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.4));
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 15px rgba(0, 245, 255, 0.3));
+}
+
+.camera-logo-gradient img {
+  width: 60px !important;
+  height: 60px !important;
 }
 
 .terms-intro {
   text-align: center;
   margin-bottom: 20px;
-  max-width: 400px;
+  max-width: 100%;
 }
 
 .terms-intro h2 {
@@ -562,12 +731,15 @@
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 20px;
-  max-width: 400px;
+  max-width: 100%;
   width: 100%;
-  max-height: 400px;
+  max-height: 45vh;
+  /* Reduced from 60vh to allow more space for buttons */
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  flex-shrink: 0;
+  /* Don't let the box shrink to nothing */
 }
 
 .terms-box h3 {
@@ -603,7 +775,7 @@
 .terms-buttons {
   display: flex;
   gap: 15px;
-  max-width: 400px;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -639,23 +811,7 @@
   box-shadow: 0 5px 20px rgba(255, 0, 255, 0.4);
 }
 
-.terms-box::-webkit-scrollbar {
-  width: 6px;
-}
-
-.terms-box::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-}
-
-.terms-box::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-}
-
-.terms-box::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
+/* Terms scrollbar removed */
 
 /* Menu/Profile Styles */
 .menu-container {
@@ -669,32 +825,34 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  position: relative;
+  padding: 10px 16px;
+  background: rgba(10, 22, 40, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 60px;
 }
 
-.menu-home-btn {
-  background: none;
+.menu-home-btn,
+.menu-hamburger-btn {
+  background: transparent;
   border: none;
-  font-size: 24px;
   color: #00F5FF;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 5px;
+  transition: all 0.2s ease;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .menu-camera-logo {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.menu-hamburger-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: white;
-  cursor: pointer;
-  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
 }
 
 .menu-title-bar {
@@ -706,7 +864,7 @@
 }
 
 .menu-title-bar h1 {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 500;
   margin: 0;
 }
@@ -727,20 +885,20 @@
 .menu-profile-section {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 25px;
-  padding-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .menu-avatar {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: bold;
   color: white;
   flex-shrink: 0;
@@ -758,16 +916,16 @@
 }
 
 .menu-profile-info h2 {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  margin: 0 0 5px 0;
+  margin: 0 0 3px 0;
   color: white;
 }
 
 .menu-location {
-  font-size: 13px;
+  font-size: 11px;
   color: #00F5FF;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 }
 
 .menu-edit-profile {
@@ -784,9 +942,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 0;
+  padding: 10px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 25px;
+  margin-bottom: 15px;
   cursor: pointer;
 }
 
@@ -797,14 +955,15 @@
 }
 
 .location-change-content div h3 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
   color: #00F5FF;
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
 }
 
 .location-change-content div p {
-  font-size: 13px;
+  font-size: 12px;
   color: #FF6B6B;
   margin: 0;
 }
@@ -819,9 +978,9 @@
 }
 
 .menu-section-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  margin: 0 0 15px 0;
+  margin: 0 0 10px 0;
   color: white;
 }
 
@@ -835,7 +994,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 0;
+  padding: 10px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
 }
@@ -853,7 +1012,7 @@
 }
 
 .menu-item-content span {
-  font-size: 15px;
+  font-size: 13px;
   color: white;
 }
 
@@ -869,10 +1028,11 @@
 /* Authentication Styles */
 .auth-title {
   color: white;
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 600;
-  margin: 20px 0 30px 0;
-  text-align: left;
+  margin: 10px 0 15px 0;
+  text-align: center;
+  /* Centered looks better for mobile fits */
   width: 100%;
   max-width: 400px;
 }
@@ -882,8 +1042,8 @@
   max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 15px;
 }
 
 .auth-submit-btn {
@@ -911,7 +1071,7 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  margin: 20px 0;
+  margin: 10px 0;
   color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
 }
@@ -930,13 +1090,13 @@
   max-width: 400px;
   width: 100%;
   justify-content: center;
-  margin-bottom: 25px;
+  margin-bottom: 15px;
 }
 
 .social-btn {
-  width: 70px;
-  height: 70px;
-  border-radius: 16px;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
   border: none;
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(10px);
@@ -992,27 +1152,78 @@
 }
 
 .profile-logo-small {
-  position: absolute;
-  top: 60px;
-  left: 20px;
   filter: drop-shadow(0 0 10px rgba(0, 245, 255, 0.4));
+}
+
+.profile-header {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.profile-back-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 10px;
+  transition: transform 0.2s;
+}
+
+.profile-back-btn:hover {
+  transform: translateX(-3px);
 }
 
 .ad-banner {
   width: 100%;
   max-width: 400px;
-  height: 180px;
-  border-radius: 16px;
+  height: auto;
+  min-height: 180px;
+  border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 40px;
+  margin-bottom: 20px;
   position: relative;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.ad-image-main {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  background: black;
+}
+
+.ad-text-container {
+  padding: 12px 15px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ad-text {
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  margin: 0;
+  letter-spacing: 0.3px;
 }
 
 .ad-banner img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  /* Maintain aspect ratio */
+  display: block;
 }
 
 .ad-label {
@@ -1141,7 +1352,7 @@
 /* Location Permission Screen Styles */
 .location-content {
   justify-content: center;
-  padding-top: 80px;
+  padding-top: 20px;
 }
 
 .location-permission-card {
@@ -1270,21 +1481,22 @@
 }
 
 .search-ad-top {
-  height: 160px;
-  margin-bottom: 10px;
+  height: auto;
+  margin-bottom: 15px;
 }
 
 .search-ad-bottom {
-  height: 240px;
+  height: auto;
   margin-top: 20px;
 }
 
 .search-buttons {
   display: flex;
-  gap: 15px;
+  gap: 12px;
   width: 100%;
   max-width: 400px;
-  align-items: flex-start;
+  align-items: stretch;
+  margin: 15px 0;
 }
 
 .search-btn-container {
@@ -1297,20 +1509,23 @@
 .search-btn {
   flex: 1;
   width: 100%;
-  padding: 16px 20px;
+  padding: 18px 12px;
   border: none;
   border-radius: 16px;
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 16px;
+  /* Reduced for better fit of long text */
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   transition: all 0.3s;
   color: white;
   position: relative;
   overflow: hidden;
+  text-align: center;
+  line-height: 1.3;
 }
 
 .search-btn.expanded {
@@ -1376,16 +1591,7 @@
 }
 
 .dropdown-list::-webkit-scrollbar {
-  width: 5px;
-}
-
-.dropdown-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.dropdown-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
+  display: none;
 }
 
 .search-continue-btn {
@@ -1442,15 +1648,20 @@
 /* Feed Screen Styles */
 .feed-container {
   background: linear-gradient(180deg, #0a1628 0%, #1a2840 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .feed-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: 10px 16px;
   background: rgba(10, 22, 40, 0.95);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 60px;
 }
 
 .feed-home-btn,
@@ -1459,10 +1670,15 @@
   background: transparent;
   border: none;
   color: #00F5FF;
-  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 8px;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .feed-camera-btn {
@@ -1478,7 +1694,17 @@
 .feed-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 15px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.feed-content::-webkit-scrollbar {
+  display: none;
 }
 
 .feed-search-bar {
@@ -1532,20 +1758,22 @@
 }
 
 .feed-ad {
-  height: 140px;
+  height: auto;
   margin-bottom: 20px;
 }
 
 .posts-container {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 15px;
+  padding-bottom: 80px;
+  /* Space for the bottom of the screen */
 }
 
 .post-card {
   display: flex;
   gap: 15px;
-  padding: 20px 15px;
+  padding: 15px 10px;
   background: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s;
@@ -1626,6 +1854,7 @@
   margin: 0 0 8px 0;
   overflow: hidden;
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
@@ -1726,18 +1955,7 @@
   text-decoration: underline;
 }
 
-.feed-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.feed-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.feed-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 245, 255, 0.3);
-  border-radius: 10px;
-}
+/* Feed content second scrollbar removed */
 
 /* New Post Creation Screen Styles */
 .newpost-container {
@@ -1748,7 +1966,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: 10px 16px;
+  background: rgba(10, 22, 40, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 60px;
 }
 
 .newpost-home-btn,
@@ -1756,10 +1978,15 @@
   background: transparent;
   border: none;
   color: #00F5FF;
-  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 8px;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .newpost-home-btn:hover,
@@ -2063,4 +2290,16 @@
 .debug-content::-webkit-scrollbar-thumb {
   background: rgba(0, 245, 255, 0.3);
   border-radius: 10px;
+}
+
+.auth-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
 }
