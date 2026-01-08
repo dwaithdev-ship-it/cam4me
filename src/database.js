@@ -226,6 +226,59 @@ class DatabaseService {
   async deleteUser(uid) {
     return false;
   }
+
+  // Notification Methods
+  async saveNotification(notification) {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notification)
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('Error saving notification:', err);
+      return notification;
+    }
+  }
+
+  async getNotifications() {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.error('Error getting notifications:', err);
+      return [];
+    }
+  }
+
+  async updateNotification(id, updates) {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('Error updating notification:', err);
+      return null;
+    }
+  }
+
+  async deleteNotification(id) {
+    try {
+      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications/${id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      return data.success;
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+      return false;
+    }
+  }
 }
 
 export const database = new DatabaseService();

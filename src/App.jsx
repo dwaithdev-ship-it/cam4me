@@ -3,7 +3,7 @@ function handleChangeAdManagerPassword() {
   // TODO: Implement password change logic
   console.log('handleChangeAdManagerPassword called');
 }
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import './App.css'
 import { database } from './database'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
@@ -108,6 +108,27 @@ function App() {
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbacks, setFeedbacks] = useState([]) // For admin view
 
+  // Notification Management State
+  const [notifications, setNotifications] = useState([])
+  const [notificationFormData, setNotificationFormData] = useState({
+    id: null,
+    title: '',
+    message: '',
+    scheduledDate: '',
+    scheduledTime: '',
+    isScheduled: false,
+    scheduleEnabled: true,
+    status: 'draft'
+  })
+  const [editingNotificationId, setEditingNotificationId] = useState(null)
+
+  // User Notification State
+  const [showUserNotificationsModal, setShowUserNotificationsModal] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showProfileImagePicker, setShowProfileImagePicker] = useState(false);
+
+
+
 
   // Universal suggestions fetching via Nominatim API
   // Also Import missing dependencies for query/onSnapshot
@@ -189,6 +210,11 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Reset/Close notification modal on auth change
+  useEffect(() => {
+    setShowUserNotificationsModal(false);
+  }, [currentUser]);
+
   // 1b. Auth-Based Navigation & Profile Sync (Reactive)
   useEffect(() => {
     if (!currentUser) return;
@@ -262,83 +288,44 @@ function App() {
   }, [currentUser, AUTHORIZED_ADMINS, AUTHORIZED_MANAGERS]);
 
   // Sync Post Text when entering 'newpost' screen
+  const hasInitializedPostRef = useRef(false)
+
+  // Reset ref when leaving screen
+  useEffect(() => {
+    if (currentScreen !== 'newpost') {
+      hasInitializedPostRef.current = false;
+    }
+  }, [currentScreen]);
+
+  // Handle data sync
   useEffect(() => {
     if (currentScreen === 'newpost') {
-      // Only initialize if we're not already editing a different post or mid-edit
-      // To keep it simple: If we just switched screen, load the data.
-      // If we are already ON the screen and userPost updates in background, ONLY update if we haven't started editing (isEditing is false)
-      if (!isEditing) {
+      // Case 1: Just entered screen (or first load)
+      if (!hasInitializedPostRef.current) {
         if (userPost) {
+          // Existing user post - load it in read-only mode
           setPostText(userPost.message || '')
           setPostImage(userPost.postImage || null)
           setEditingPostId(userPost.id)
           setIsEditing(false)
         } else {
-          // No user post, but are we initializing a blank one? 
-          // If we just arrived here, yes.
-          if (!postText) {
-            setPostText('')
-            setPostImage(null)
-            setEditingPostId(null)
-            setIsEditing(true)
-          }
+          // No post - start fresh in edit mode
+          setPostText('')
+          setPostImage(null)
+          setEditingPostId(null)
+          setIsEditing(true)
         }
+        hasInitializedPostRef.current = true;
       }
-    }
-  }, [currentScreen, userPost, isEditing === false]) // Depend on isEditing state to know when to stop syncing
-
-  // NOTE: The dependency array above is tricky. 
-  // Better approach: Separate effect for screen Entry vs Data Sync.
-  const [prevScreen, setPrevScreen] = useState('')
-  useEffect(() => {
-    if (currentScreen === 'newpost' && prevScreen !== 'newpost') {
-      // Just entered newpost screen
-      if (userPost) {
+      // Case 2: Post loaded LATE (after entering screen) 
+      // Only update if we haven't started editing yet (safe update)
+      else if (userPost && !isEditing && !postText && !postImage) {
         setPostText(userPost.message || '')
         setPostImage(userPost.postImage || null)
         setEditingPostId(userPost.id)
-        setIsEditing(false)
-      } else {
-        setPostText('')
-        setPostImage(null)
-        setEditingPostId(null)
-        setIsEditing(true)
       }
     }
-    setPrevScreen(currentScreen)
-  }, [currentScreen, userPost]) // userPost added so if it loads late (after screen switch), it still populates. But guard with !isEditing check inside? 
-  // If I add userPost, it re-runs on polling.
-
-  // Let's go with the Ref approach to track "has initialized for this session"
-  const hasInitializedPostRef = useRef(false)
-  useEffect(() => {
-    if (currentScreen !== 'newpost') {
-      hasInitializedPostRef.current = false;
-    } else if (currentScreen === 'newpost' && !hasInitializedPostRef.current) {
-      if (userPost) {
-        setPostText(userPost.message || '')
-        setPostImage(userPost.postImage || null)
-        setEditingPostId(userPost.id)
-        setIsEditing(false)
-        hasInitializedPostRef.current = true;
-      } else {
-        // Wait for userPost? or default to empty?
-        // If we default to empty, and userPost loads 1 sec later, we might want to update it.
-        setPostText('')
-        setPostImage(null)
-        setEditingPostId(null)
-        setIsEditing(true)
-        // Don't set initialized to true yet if we expect userPost might come? 
-        // Actually, if userPost is null, we assume no post. If it appears later, we can check.
-        hasInitializedPostRef.current = true;
-      }
-    } else if (currentScreen === 'newpost' && hasInitializedPostRef.current && userPost && !isEditing && !postText) {
-      // Late load: If we are in read-only mode (not editing) and text is empty, maybe we missed the load?
-      setPostText(userPost.message || '')
-      setPostImage(userPost.postImage || null)
-      setEditingPostId(userPost.id)
-    }
-  }, [currentScreen, userPost])
+  }, [currentScreen, userPost]);
 
   // 2. Sync Ads & Posts (Local Polling)
   useEffect(() => {
@@ -714,48 +701,43 @@ function App() {
       e.stopPropagation()
     }
 
-    try {
-      // Check if Capacitor is available (mobile) or we're on web
-      const isWeb = !window.Capacitor || window.Capacitor.getPlatform() === 'web'
+    // Check if Capacitor is available (mobile) or we're on web
+    const isWeb = !window.Capacitor || window.Capacitor.getPlatform() === 'web'
 
-      if (isWeb) {
-        // For web, create a file input
-        const input = document.createElement('input')
-        input.type = 'file'
-        input.accept = 'image/*'
-        input.capture = 'environment' // Request camera on mobile browsers
+    if (isWeb) {
+      // For web, create a file input
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*'
+      // Removed input.capture to allow generic file picker (Camera/Gallery)
 
-        input.onchange = (event) => {
-          const file = event.target.files[0]
-          if (file) {
-            const reader = new FileReader()
-            reader.onload = (e) => {
-              setProfileData({ ...profileData, photo: e.target.result })
-            }
-            reader.readAsDataURL(file)
+      input.onchange = (event) => {
+        const file = event.target.files[0]
+        if (file) {
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            setProfileData({ ...profileData, photo: e.target.result })
           }
-        }
-
-        input.click()
-        return
-      }
-
-      // Mobile app - use Capacitor Camera
-      const permissions = await Camera.checkPermissions()
-
-      if (permissions.camera === 'denied' || permissions.photos === 'denied') {
-        const requested = await Camera.requestPermissions()
-        if (requested.camera === 'denied') {
-          alert('Camera permissions are required. Please enable camera access in your device settings.')
-          return
+          reader.readAsDataURL(file)
         }
       }
 
+      input.click()
+      return
+    }
+
+    // Mobile app - show picker
+    setShowProfileImagePicker(true)
+  }
+
+  const handleProfileImageSelect = async (source) => {
+    setShowProfileImagePicker(false)
+    try {
       const image = await Camera.getPhoto({
         quality: 90,
         allowEditing: true,
         resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt // Let user choose camera or gallery
+        source: source
       })
 
       if (image && image.dataUrl) {
@@ -763,9 +745,6 @@ function App() {
       }
     } catch (error) {
       console.error('Error taking photo:', error)
-      if (error.message && !error.message.includes('User cancelled')) {
-        alert('Failed to access camera. Please try again or check camera permissions.')
-      }
     }
   }
 
@@ -854,11 +833,174 @@ function App() {
     }
   };
 
+  // Notification Management Handlers
+  // Notification Management Handlers
+  const loadNotifications = useCallback(async () => {
+    try {
+      const data = await database.getNotifications();
+      setNotifications(data);
+
+      // Calculate unread count for user
+      if (currentUser && data && data.length > 0) {
+        const storageKey = `read_notifications_${currentUser.uid}`;
+        const readIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        // Filter for sent notifications that are not in readIds
+        const validUnread = data.filter(n => n.status === 'sent' && !readIds.includes(n.id));
+        setUnreadCount(validUnread.length);
+      } else {
+        setUnreadCount(0);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    }
+  }, [currentUser]);
+
+  const markNotificationsAsRead = () => {
+    if (!currentUser) return;
+    const sentNotifications = notifications.filter(n => n.status === 'sent').map(n => n.id);
+    const storageKey = `read_notifications_${currentUser.uid}`;
+    const existingRead = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const newRead = [...new Set([...existingRead, ...sentNotifications])];
+    localStorage.setItem(storageKey, JSON.stringify(newRead));
+    setUnreadCount(0);
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    // Poll for notifications
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+
+  const handleNotificationFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setNotificationFormData({
+      ...notificationFormData,
+      [name]: type === 'checkbox' ? checked : value
+    });
+  };
+
+  const handleSaveNotification = async () => {
+    if (!notificationFormData.title.trim()) {
+      return alert("Please enter a notification title");
+    }
+    if (!notificationFormData.message.trim()) {
+      return alert("Please enter a notification message");
+    }
+
+    try {
+      const notificationData = {
+        ...notificationFormData,
+        id: notificationFormData.id || 'notif_' + Date.now(),
+        createdAt: notificationFormData.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await database.saveNotification(notificationData);
+      await loadNotifications();
+
+      // Reset form
+      setNotificationFormData({
+        id: null,
+        title: '',
+        message: '',
+        scheduledDate: '',
+        scheduledTime: '',
+        isScheduled: false,
+        scheduleEnabled: true,
+        status: 'draft'
+      });
+      setEditingNotificationId(null);
+
+      alert(notificationFormData.id ? "Notification updated successfully" : "Notification created successfully");
+      setCurrentScreen('admin_notifications');
+    } catch (err) {
+      console.error("Error saving notification:", err);
+      alert("Failed to save notification. Please try again.");
+    }
+  };
+
+  const handleEditNotification = (notification) => {
+    setNotificationFormData({
+      id: notification.id,
+      title: notification.title || '',
+      message: notification.message || '',
+      scheduledDate: notification.scheduledDate || '',
+      scheduledTime: notification.scheduledTime || '',
+      isScheduled: notification.isScheduled || false,
+      scheduleEnabled: notification.scheduleEnabled !== undefined ? notification.scheduleEnabled : true,
+      status: notification.status || 'draft',
+      createdAt: notification.createdAt
+    });
+    setEditingNotificationId(notification.id);
+    setCurrentScreen('admin_notification_form');
+  };
+
+  const handleDeleteNotification = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this notification?")) {
+      return;
+    }
+
+    try {
+      await database.deleteNotification(id);
+      await loadNotifications();
+      alert("Notification deleted successfully");
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+      alert("Failed to delete notification. Please try again.");
+    }
+  };
+
+  const handleToggleSchedule = async (notification) => {
+    // If called via the new generic buttons, notification arg has the NEW desired state in it already
+    // If called via legacy toggle (if any), we need to toggle
+
+    // Check if notification passed is the raw object or has modified props
+    // We fetch the current fresh object from state just to be safe if we were toggling
+    const current = notifications.find(n => n.id === notification.id);
+    if (!current) return;
+
+    const newEnabled = notification.scheduleEnabled !== undefined ? notification.scheduleEnabled : !current.scheduleEnabled;
+
+    try {
+      await database.updateNotification(notification.id, { scheduleEnabled: newEnabled });
+      loadNotifications();
+    } catch (err) {
+      console.error("Error toggling schedule:", err);
+    }
+  };
+
+
+  const handleSendNotification = async (notification) => {
+    if (!window.confirm("Send this notification to all users now?")) {
+      return;
+    }
+
+    try {
+      await database.updateNotification(notification.id, {
+        status: 'sent',
+        sentAt: new Date().toISOString()
+      });
+      await loadNotifications();
+      alert("Notification sent successfully!");
+    } catch (err) {
+      console.error("Error sending notification:", err);
+      alert("Failed to send notification");
+    }
+  };
+
   useEffect(() => {
     if (currentScreen === 'admin_feedbacks') {
       loadFeedbacks();
     }
   }, [currentScreen]);
+
+  useEffect(() => {
+    if (currentScreen === 'admin_notifications' || currentScreen === 'admin_notification_form') {
+      loadNotifications();
+    }
+  }, [currentScreen]);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -894,6 +1036,8 @@ function App() {
         const input = document.createElement('input')
         input.type = 'file'
         input.accept = 'image/*'
+        input.style.display = 'none'
+        document.body.appendChild(input)
 
         input.onchange = (event) => {
           const file = event.target.files[0]
@@ -902,9 +1046,17 @@ function App() {
             reader.onload = (e) => {
               setPostImage(e.target.result)
             }
+            reader.onerror = (e) => {
+              console.error("FileReader error", e)
+              alert("Failed to read image file")
+            }
             reader.readAsDataURL(file)
           }
+          document.body.removeChild(input)
         }
+
+        // Safety cleanup if user cancels (optional, but keeps DOM clean eventually)
+        // setTimeout(() => { if(document.body.contains(input)) document.body.removeChild(input) }, 60000)
 
         input.click()
         return
@@ -913,7 +1065,7 @@ function App() {
       // Mobile app - use Capacitor Camera
       const image = await Camera.getPhoto({
         quality: 90,
-        allowEditing: true,
+        allowEditing: false,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Photos
       })
@@ -1672,6 +1824,44 @@ function App() {
           <button className="continue-btn" onClick={handleProfileContinue}>
             continue
           </button>
+
+          {showProfileImagePicker && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.8)', zIndex: 9999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }} onClick={() => setShowProfileImagePicker(false)}>
+              <div style={{
+                background: '#1a1a1a', padding: '24px', borderRadius: '16px',
+                width: '80%', maxWidth: '300px', textAlign: 'center',
+                border: '1px solid #333'
+              }} onClick={e => e.stopPropagation()}>
+                <h3 style={{ color: 'white', marginBottom: '20px', marginTop: 0 }}>Change Profile Photo</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <button onClick={() => handleProfileImageSelect(CameraSource.Camera)} style={{
+                    padding: '12px', borderRadius: '8px', border: 'none',
+                    background: '#333', color: 'white', fontSize: '16px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                  }}>
+                    <span>📷</span> Take Photo
+                  </button>
+                  <button onClick={() => handleProfileImageSelect(CameraSource.Photos)} style={{
+                    padding: '12px', borderRadius: '8px', border: 'none',
+                    background: '#333', color: 'white', fontSize: '16px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                  }}>
+                    <span>🖼️</span> Choose from Gallery
+                  </button>
+                  <button onClick={() => setShowProfileImagePicker(false)} style={{
+                    padding: '12px', borderRadius: '8px', border: 'none',
+                    background: 'transparent', color: '#888', fontSize: '14px', cursor: 'pointer', marginTop: '8px'
+                  }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1966,19 +2156,37 @@ function App() {
           />
 
           {postImage && (
-            <div className="newpost-image-preview">
+            <div className="newpost-image-preview" style={{ position: 'relative' }}>
               <img src={postImage} alt="Post" />
+              {isEditing && (
+                <button
+                  onClick={() => setPostImage(null)}
+                  style={{
+                    position: 'absolute',
+                    top: '5px',
+                    right: '5px',
+                    background: 'rgba(0,0,0,0.6)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '16px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  ×
+                </button>
+              )}
             </div>
           )}
 
           <div className="newpost-actions">
-            <button className="newpost-action-btn camera-btn" onClick={handleCameraCapture}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 15.2c1.71 0 3.1-1.39 3.1-3.1s-1.39-3.1-3.1-3.1-3.1 1.39-3.1 3.1 1.39 3.1 3.1 3.1z" />
-                <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" />
-              </svg>
-              Camera
-            </button>
+
             <button className="newpost-action-btn gallery-btn" onClick={handleGalleryUpload}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
@@ -2370,6 +2578,12 @@ function App() {
             <p>Database: OTIS</p>
             <p>Server Status: Online</p>
             <button className="auth-submit-btn" style={{ marginTop: '10px', background: '#333' }} onClick={() => setCurrentScreen('admin_feedbacks')}>User Feedbacks</button>
+          </div>
+          <div className="debug-section">
+            <h2>📢 Notification Management</h2>
+            <p>Total Notifications: {notifications.length}</p>
+            <p>Scheduled: {notifications.filter(n => n.isScheduled && n.scheduleEnabled).length}</p>
+            <button className="auth-submit-btn" style={{ marginTop: '10px', background: '#4A90E2' }} onClick={() => setCurrentScreen('admin_notifications')}>Manage Notifications</button>
           </div>
         </div>
       </div>
@@ -3041,6 +3255,349 @@ function App() {
     );
   }
 
+  // Admin Notifications List Screen
+  if (currentScreen === 'admin_notifications') {
+    return (
+      <div className="app-container">
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+        <div className="debug-header" style={{ background: '#4A90E2', height: '60px', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+          <button className="header-btn" onClick={() => setCurrentScreen('admin_dashboard')} style={{ color: 'white' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+          </button>
+          <h1 style={{ fontSize: '18px', margin: 0, color: 'white', flex: 1, textAlign: 'center' }}>Manage Notifications</h1>
+          <button className="header-btn" onClick={() => {
+            setNotificationFormData({
+              id: null,
+              title: '',
+              message: '',
+              scheduledDate: '',
+              scheduledTime: '',
+              isScheduled: false,
+              scheduleEnabled: true,
+              status: 'draft'
+            });
+            setEditingNotificationId(null);
+            setCurrentScreen('admin_notification_form');
+          }} style={{ color: 'white', fontSize: '24px' }}>
+            +
+          </button>
+        </div>
+        <div className="debug-content" style={{ padding: '16px' }}>
+          {notifications.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#666' }}>
+              <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>📢</p>
+              <p style={{ fontSize: '16px', marginBottom: '8px' }}>No notifications yet</p>
+              <p style={{ fontSize: '14px', color: '#999' }}>Create your first notification to get started</p>
+            </div>
+          ) : (
+            notifications.map((notification) => (
+              <div key={notification.id} style={{ background: '#f5f5f5', borderRadius: '12px', padding: '16px', marginBottom: '12px', border: '1px solid #e0e0e0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#333', flex: 1 }}>{notification.title}</h3>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    background: notification.status === 'sent' ? '#4CAF50' : notification.status === 'scheduled' ? '#FF9800' : '#999',
+                    color: 'white'
+                  }}>
+                    {notification.status || 'draft'}
+                  </span>
+                </div>
+                <p style={{ margin: '8px 0', fontSize: '14px', color: '#666', lineHeight: '1.5' }}>{notification.message}</p>
+
+                {notification.isScheduled && (
+                  <div style={{ background: '#fff', padding: '8px 12px', borderRadius: '8px', marginTop: '8px', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span>🕒</span>
+                      <span style={{ fontWeight: '600' }}>Scheduled:</span>
+                      <span>{notification.scheduledDate} at {notification.scheduledTime}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{notification.scheduleEnabled ? '✅' : '⏸️'}</span>
+                        <span style={{ color: notification.scheduleEnabled ? '#4CAF50' : '#999', fontWeight: 'bold' }}>
+                          {notification.scheduleEnabled ? 'Active' : 'Disabled'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => {
+                            if (notification.scheduleEnabled) return;
+                            const n = { ...notification, scheduleEnabled: true };
+                            handleToggleSchedule(n); // We reuse the toggle logic but pass expected state if logic allows, or just toggle
+                          }}
+                          disabled={notification.scheduleEnabled}
+                          style={{
+                            padding: '6px 12px',
+                            background: notification.scheduleEnabled ? '#e0e0e0' : '#4CAF50',
+                            color: notification.scheduleEnabled ? '#999' : 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            cursor: notification.scheduleEnabled ? 'default' : 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          Enable
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!notification.scheduleEnabled) return;
+                            const n = { ...notification, scheduleEnabled: false };
+                            handleToggleSchedule(n);
+                          }}
+                          disabled={!notification.scheduleEnabled}
+                          style={{
+                            padding: '6px 12px',
+                            background: !notification.scheduleEnabled ? '#e0e0e0' : '#FF9800',
+                            color: !notification.scheduleEnabled ? '#999' : 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            cursor: !notification.scheduleEnabled ? 'default' : 'pointer',
+                            fontWeight: '600'
+                          }}
+                        >
+                          Disable
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    onClick={() => handleEditNotification(notification)}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: '#4A90E2',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                  {notification.status !== 'sent' && (
+                    <button
+                      onClick={() => handleSendNotification(notification)}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📤 Send Now
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDeleteNotification(notification.id)}
+                    style={{
+                      padding: '10px 16px',
+                      background: '#f44336',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Admin Notification Form Screen
+  if (currentScreen === 'admin_notification_form') {
+    return (
+      <div className="app-container">
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+        <div className="debug-header" style={{ background: '#4A90E2', height: '60px', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+          <button className="header-btn" onClick={() => setCurrentScreen('admin_notifications')} style={{ color: 'white' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+          </button>
+          <h1 style={{ fontSize: '18px', margin: 0, color: 'white', flex: 1, textAlign: 'center' }}>
+            {editingNotificationId ? 'Edit Notification' : 'New Notification'}
+          </h1>
+          <div style={{ width: '44px' }}></div>
+        </div>
+        <div className="debug-content" style={{ padding: '16px' }}>
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Title</label>
+            <input
+              type="text"
+              name="title"
+              value={notificationFormData.title}
+              onChange={handleNotificationFormChange}
+              placeholder="Enter notification title"
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>Message</label>
+            <textarea
+              name="message"
+              value={notificationFormData.message}
+              onChange={handleNotificationFormChange}
+              placeholder="Enter notification message"
+              rows="5"
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                fontSize: '14px',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          <div style={{ background: '#f5f5f5', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+              <input
+                type="checkbox"
+                name="isScheduled"
+                checked={notificationFormData.isScheduled}
+                onChange={handleNotificationFormChange}
+                id="isScheduled"
+                style={{ marginRight: '8px', width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <label htmlFor="isScheduled" style={{ fontWeight: '600', color: '#333', cursor: 'pointer' }}>
+                📅 Schedule Notification
+              </label>
+            </div>
+
+            {notificationFormData.isScheduled && (
+              <div>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666' }}>Date</label>
+                  <input
+                    type="date"
+                    name="scheduledDate"
+                    value={notificationFormData.scheduledDate}
+                    onChange={handleNotificationFormChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd',
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      color: '#000'
+                    }}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666' }}>Time</label>
+                  <input
+                    type="time"
+                    name="scheduledTime"
+                    value={notificationFormData.scheduledTime}
+                    onChange={handleNotificationFormChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd',
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      color: '#000'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', padding: '12px', background: '#fff', borderRadius: '8px' }}>
+                  <input
+                    type="checkbox"
+                    name="scheduleEnabled"
+                    checked={notificationFormData.scheduleEnabled}
+                    onChange={handleNotificationFormChange}
+                    id="scheduleEnabled"
+                    style={{ marginRight: '8px', width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="scheduleEnabled" style={{ fontSize: '14px', color: '#666', cursor: 'pointer' }}>
+                    Enable schedule (uncheck to disable without deleting schedule)
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={handleSaveNotification}
+              style={{
+                flex: 1,
+                padding: '14px',
+                background: '#4A90E2',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              {editingNotificationId ? '💾 Update' : '✅ Create'}
+            </button>
+            <button
+              onClick={() => setCurrentScreen('admin_notifications')}
+              style={{
+                padding: '14px 24px',
+                background: '#999',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 
   // Feed Screen
@@ -3053,16 +3610,90 @@ function App() {
           <span className="time">{time}</span>
         </div>
 
-        <div className="feed-header">
-          <button className="feed-home-btn" onClick={() => setCurrentScreen('feed')}>
+        <div className="feed-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', width: '100%', maxWidth: '800px', margin: '0 auto', boxSizing: 'border-box', position: 'relative', zIndex: 100 }}>
+          {/* 1. Home */}
+          <button className="feed-home-btn" onClick={() => setCurrentScreen('feed')} style={{ background: 'none', border: 'none', padding: 0, color: 'white', cursor: 'pointer' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
               <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
             </svg>
           </button>
-          <button className="feed-camera-btn" onClick={() => setCurrentScreen('profile')}>
-            <img src="/cam4me_logo.png" alt="CAM4ME" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+
+          {/* 2. Logo */}
+          <button className="feed-camera-btn" onClick={() => setCurrentScreen('profile')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <img src="/cam4me_logo.png" alt="CAM4ME" style={{ height: '28px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} />
           </button>
-          <button className="feed-menu-btn" onClick={() => setCurrentScreen('menu')}>
+
+          {/* 3. Bell */}
+          <div className="notification-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={() => {
+                setShowUserNotificationsModal(!showUserNotificationsModal);
+                if (!showUserNotificationsModal && unreadCount > 0) {
+                  markNotificationsAsRead();
+                }
+              }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'white', position: 'relative', display: 'flex' }}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-1px',
+                  right: '-1px',
+                  width: '10px',
+                  height: '10px',
+                  background: '#ff3b30',
+                  borderRadius: '50%',
+                  border: '2px solid white'
+                }}></span>
+              )}
+            </button>
+
+            {showUserNotificationsModal && (
+              <div style={{
+                position: 'absolute',
+                top: '140%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '300px',
+                background: 'white',
+                borderRadius: '16px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                border: 'none',
+                zIndex: 1000,
+                overflow: 'hidden'
+              }}>
+                <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', color: '#333' }}>
+                  <span style={{ fontSize: '16px' }}>Notifications</span>
+                  <button onClick={() => setShowUserNotificationsModal(false)} style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#999', display: 'flex', padding: 4 }}>×</button>
+                </div>
+                <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                  {notifications.filter(n => n.status === 'sent').length === 0 ? (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#999' }}>
+                      <div style={{ fontSize: '32px', marginBottom: '10px', opacity: 0.5 }}>🔔</div>
+                      <p style={{ margin: 0 }}>No new notifications</p>
+                    </div>
+                  ) : (
+                    notifications.filter(n => n.status === 'sent').map(n => (
+                      <div key={n.id} style={{ padding: '16px', borderBottom: '1px solid #f5f5f5', background: 'white', textAlign: 'left' }}>
+                        <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#333' }}>{n.title}</h4>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.5' }}>{n.message}</p>
+                        <span style={{ display: 'block', fontSize: '11px', color: '#ccc', marginTop: '8px' }}>
+                          {new Date(n.updatedAt || n.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. Menu */}
+          <button className="feed-menu-btn" onClick={() => setCurrentScreen('menu')} style={{ background: 'none', border: 'none', padding: 0, color: 'white', cursor: 'pointer' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
               <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
             </svg>

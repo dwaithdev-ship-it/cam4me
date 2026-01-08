@@ -182,7 +182,127 @@ app.get('/api/feedbacks', async (req, res) => {
     }
 });
 
+// --- NOTIFICATION ENDPOINTS ---
+app.post('/api/notifications', async (req, res) => {
+    const notification = req.body;
+    const id = notification.id || 'notif_' + Date.now();
+    const query = `
+    INSERT INTO notifications (id, title, message, "scheduledDate", "scheduledTime", "isScheduled", "scheduleEnabled", status, "createdAt", "updatedAt")
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (id) DO UPDATE SET
+      title = EXCLUDED.title,
+      message = EXCLUDED.message,
+      "scheduledDate" = EXCLUDED."scheduledDate",
+      "scheduledTime" = EXCLUDED."scheduledTime",
+      "isScheduled" = EXCLUDED."isScheduled",
+      "scheduleEnabled" = EXCLUDED."scheduleEnabled",
+      status = EXCLUDED.status,
+      "updatedAt" = CURRENT_TIMESTAMP
+    RETURNING *;
+  `;
+    const values = [
+        id,
+        notification.title || '',
+        notification.message || '',
+        notification.scheduledDate || null,
+        notification.scheduledTime || null,
+        notification.isScheduled || false,
+        notification.scheduleEnabled !== undefined ? notification.scheduleEnabled : true,
+        notification.status || 'draft',
+        notification.createdAt || new Date().toISOString(),
+        new Date().toISOString()
+    ];
+    try {
+        const result = await pool.query(query, values);
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM notifications ORDER BY "createdAt" DESC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/notifications/:id', async (req, res) => {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (updates.title !== undefined) {
+        fields.push(`title = $${paramIndex++}`);
+        values.push(updates.title);
+    }
+    if (updates.message !== undefined) {
+        fields.push(`message = $${paramIndex++}`);
+        values.push(updates.message);
+    }
+    if (updates.scheduledDate !== undefined) {
+        fields.push(`"scheduledDate" = $${paramIndex++}`);
+        values.push(updates.scheduledDate);
+    }
+    if (updates.scheduledTime !== undefined) {
+        fields.push(`"scheduledTime" = $${paramIndex++}`);
+        values.push(updates.scheduledTime);
+    }
+    if (updates.isScheduled !== undefined) {
+        fields.push(`"isScheduled" = $${paramIndex++}`);
+        values.push(updates.isScheduled);
+    }
+    if (updates.scheduleEnabled !== undefined) {
+        fields.push(`"scheduleEnabled" = $${paramIndex++}`);
+        values.push(updates.scheduleEnabled);
+    }
+    if (updates.status !== undefined) {
+        fields.push(`status = $${paramIndex++}`);
+        values.push(updates.status);
+    }
+
+    fields.push(`"updatedAt" = CURRENT_TIMESTAMP`);
+    values.push(id);
+
+    const query = `UPDATE notifications SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+
+    try {
+        const result = await pool.query(query, values);
+        res.json(result.rows[0] || null);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/notifications/:id', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM notifications WHERE id = $1', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message, success: false });
+    }
+});
+
 const PORT = 5000;
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`PostgreSQL Bridge Backend running on port ${PORT}`);
+});
+
+// Force keep-alive
+setInterval(() => { }, 1000);
+
+process.on('exit', (code) => {
+    console.log(`Process exiting with code: ${code}`);
+});
+
+process.on('SIGINT', () => {
+    console.log('Received SIGINT. Press Control-D to exit.');
+    process.exit(0);
 });
