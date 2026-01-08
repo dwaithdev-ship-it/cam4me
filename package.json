@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "set-pass": "node scripts/set_user_password.cjs"
+    "set-pass": "node scripts/set_user_password.cjs",
+    "share": "ssh -o StrictHostKeyChecking=no -R 80:localhost:5173 serveo.net"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^7.0.2",
