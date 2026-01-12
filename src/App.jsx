@@ -2108,17 +2108,7 @@ function App() {
             </svg>
           </button>
           <div className="newpost-camera-logo">
-            <svg width="40" height="40" viewBox="0 0 100 100" fill="none">
-              <rect x="20" y="35" width="60" height="45" rx="5" stroke="url(#gradNewPost)" strokeWidth="3" fill="none" />
-              <circle cx="50" cy="57.5" r="12" stroke="url(#gradNewPost)" strokeWidth="3" fill="none" />
-              <line x1="20" y1="75" x2="80" y2="75" stroke="url(#gradNewPost)" strokeWidth="3" />
-              <defs>
-                <linearGradient id="gradNewPost" x1="0" y1="0" x2="100" y2="100">
-                  <stop offset="0%" stopColor="#00F5FF" />
-                  <stop offset="100%" stopColor="#FF00FF" />
-                </linearGradient>
-              </defs>
-            </svg>
+            <img src="/logo_camera.png" alt="CAM4ME" style={{ height: '28px', objectFit: 'contain' }} />
           </div>
           <button className="newpost-menu-btn" onClick={() => setCurrentScreen('menu')}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -2270,6 +2260,7 @@ function App() {
           <h3 className="menu-section-title">About App</h3>
 
           <div className="menu-items">
+            {/* 
             <div className="menu-item" onClick={() => setCurrentScreen('debug')} style={{ cursor: 'pointer' }}>
               <div className="menu-item-content">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="#00F5FF">
@@ -2279,6 +2270,7 @@ function App() {
               </div>
               <button className="menu-arrow">›</button>
             </div>
+            */}
 
             <div className="menu-item">
               <div className="menu-item-content">
@@ -3953,9 +3945,25 @@ function App() {
       </div>
 
       <div className="content">
-        <div className="logo-container">
-          <img src="/cam4me_logo.png" alt="CAM4ME Logo" className="logo-image" />
-          <h1 className="app-title">CAM4ME</h1>
+        <div style={{ width: '100%', display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+          <button
+            onClick={() => setCurrentScreen('search')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              padding: '10px'
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+          </button>
+          <div className="logo-container" style={{ flex: 1, marginRight: '44px' }}>
+            <img src="/logo_bubble.png" alt="CAM4ME Logo" className="logo-image" />
+            <h1 className="app-title">CAM4ME</h1>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="form">
