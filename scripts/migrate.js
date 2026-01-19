@@ -11,7 +11,7 @@ const pgConfig = {
     user: 'postgres',
     host: 'localhost',
     database: 'cam4me',
-    password: 'Dw@1thdev123',
+    password: 'Dwaithdevkalyan@123',
     port: 5432,
 };
 

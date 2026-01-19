@@ -223,78 +223,75 @@ function App() {
     const syncAndNavigate = async () => {
       try {
         console.log('[Auth] Syncing user data for:', currentUser.uid);
-        let data = await database.getUser(currentUser.uid);
+
+        // Parallelize fetching profile AND user's own posts (targeted query)
+        const [data, userPosts] = await Promise.all([
+          database.getUser(currentUser.uid),
+          database.getUserPosts(currentUser.uid)
+        ]);
+
+        let finalData = data;
 
         // Data Recovery: If local missing, try Firestore
-        if (!data) {
-          console.log("[Auth] Local data missing, checking Firestore...");
+        if (!finalData) {
+          console.log("[Auth] User data missing in Realtime DB, checking Firestore...");
           try {
             const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
             if (userDoc.exists()) {
               console.log("[Auth] Found backup in Firestore, restoring...");
-              data = userDoc.data();
-              await database.saveUser(data); // Restore to local
+              finalData = userDoc.data();
+              await database.saveUser(finalData); // Restore to primary DB
             }
           } catch (cloudErr) {
             console.warn("[Auth] Firestore fetch failed:", cloudErr);
           }
         }
 
-        if (data) {
-          setProfileData({ name: data.name || currentUser.displayName || '', photo: data.photo || currentUser.photoURL || null });
+        if (finalData) {
+          setProfileData({ name: finalData.name || currentUser.displayName || '', photo: finalData.photo || currentUser.photoURL || null });
           setFormData({
-            name: data.name || '',
-            mobile: data.mobile || '',
-            village: data.village || '',
-            mandal: data.mandal || '',
-            district: data.district || '',
-            state: data.state || ''
+            name: finalData.name || '',
+            mobile: finalData.mobile || '',
+            village: finalData.village || '',
+            mandal: finalData.mandal || '',
+            district: finalData.district || '',
+            state: finalData.state || ''
           });
-          setSelectedCity(data.selectedCity || '');
-          setSelectedCategory(data.selectedCategory || '');
+          setSelectedCity(finalData.selectedCity || '');
+          setSelectedCategory(finalData.selectedCategory || '');
 
           const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
           const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
 
           // Only auto-navigate if we are on an auth screen
-          if (currentScreen === 'signin' || currentScreen === 'signup' || currentScreen === 'terms' || currentScreen === 'forgot_password') {
+          if (['signin', 'signup', 'terms', 'forgot_password'].includes(currentScreen)) {
             if (!isAdmin && !isManager) {
-              if (data.setupCompleted) {
-                console.log('[Auth] Setup complete, going to feed');
-                setCurrentScreen('feed');
-              } else if (data.termsAccepted) {
-                console.log('[Auth] Terms accepted, going to profile');
-                setCurrentScreen('profile');
-              } else {
-                console.log('[Auth] Going to terms');
-                setCurrentScreen('terms');
-              }
-            } else {
-              if (data.setupCompleted) setCurrentScreen('feed');
+              if (finalData.setupCompleted) setCurrentScreen('feed');
+              else if (finalData.termsAccepted) setCurrentScreen('profile');
+              else setCurrentScreen('terms');
+            } else if (finalData.setupCompleted) {
+              setCurrentScreen('feed');
             }
           }
         } else {
-          // New User or No Data Found
-          console.log('[Auth] No data found, assuming new user');
-          const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
-          const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
-
-          if (currentScreen === 'signin' || currentScreen === 'signup' || currentScreen === 'terms') {
-            if (!isAdmin && !isManager) {
-              setCurrentScreen('terms');
-            }
+          // New User
+          if (['signin', 'signup', 'terms'].includes(currentScreen)) {
+            const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
+            const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
+            if (!isAdmin && !isManager) setCurrentScreen('terms');
           }
         }
 
-        const allPosts = await database.getPosts();
-        const myLastPost = allPosts.find(p => p.userId === currentUser.uid);
-        if (myLastPost) setUserPost(myLastPost);
+        // Set user's last post from targeted fetch
+        if (userPosts && userPosts.length > 0) {
+          setUserPost(userPosts[0]);
+        }
       } catch (err) {
         console.error("[Auth] Sync error:", err);
       }
     };
     syncAndNavigate();
-  }, [currentUser, currentScreen]); // Added currentScreen to dependency
+  }, [currentUser]);
 
   // Sync Post Text when entering 'newpost' screen
   const hasInitializedPostRef = useRef(false)
@@ -339,6 +336,10 @@ function App() {
   // 2. Sync Ads & Posts (Local Polling)
   useEffect(() => {
     const refreshLocalData = async () => {
+      // Only poll if on screens that need community data
+      const needsData = ['feed', 'search', 'admin_dashboard', 'ad_manager_dashboard', 'admin_users'].includes(currentScreen);
+      if (!needsData) return;
+
       try {
         const [localAds, localPosts] = await Promise.all([
           database.getAds(),
@@ -360,9 +361,9 @@ function App() {
       }
     };
     refreshLocalData();
-    const interval = setInterval(refreshLocalData, 3000);
+    const interval = setInterval(refreshLocalData, 10000);
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser, currentScreen]);
 
   // 4. Sync Blocked Users
   useEffect(() => {
@@ -879,7 +880,7 @@ function App() {
         const storageKey = `read_notifications_${currentUser.uid}`;
         const readIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
         // Filter for sent notifications that are not in readIds
-        const validUnread = data.filter(n => n.status === 'sent' && !readIds.includes(n.id));
+        const validUnread = data.filter(n => n.status === 'sent' && !(readIds || []).includes(n.id));
         setUnreadCount(validUnread.length);
       } else {
         setUnreadCount(0);
@@ -1440,18 +1441,18 @@ function App() {
   }
 
   const getFilteredRecords = () => {
-    let filtered = records.filter(record => !blockedUsers.includes(record.id))
+    let filtered = records.filter(record => !(blockedUsers || []).includes(record.id))
 
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(record =>
-        record.name.toLowerCase().includes(query) ||
-        record.mobile.includes(query) ||
-        record.village.toLowerCase().includes(query) ||
-        record.mandal.toLowerCase().includes(query) ||
-        record.district.toLowerCase().includes(query) ||
-        record.state.toLowerCase().includes(query)
+        (record.name || '').toLowerCase().includes(query) ||
+        (record.mobile || '').includes(query) ||
+        (record.village || '').toLowerCase().includes(query) ||
+        (record.mandal || '').toLowerCase().includes(query) ||
+        (record.district || '').toLowerCase().includes(query) ||
+        (record.state || '').toLowerCase().includes(query)
       )
     }
 
@@ -1472,7 +1473,7 @@ function App() {
   const getAnalytics = () => {
     const today = new Date().toLocaleDateString()
     const todayRecords = records.filter(record =>
-      record.timestamp.includes(today)
+      record.timestamp && typeof record.timestamp === 'string' && record.timestamp.includes(today)
     )
 
     const districts = [...new Set(records.map(r => r.district))]
@@ -1783,10 +1784,10 @@ function App() {
         const userLoc = (selectedCity || formData.district || formData.state || '').toLowerCase();
         if (!userLoc) return true; // Show if user hasn't set location
 
-        return ad.targetLocations.some(loc => {
-          const targetName = loc.name.toLowerCase();
+        return (ad.targetLocations || []).some(loc => {
+          const targetName = (loc.name || '').toLowerCase();
           // Simple match: user in Guntur, ad targets Guntur
-          return targetName.includes(userLoc) || userLoc.includes(targetName);
+          return targetName && userLoc && (targetName.includes(userLoc) || userLoc.includes(targetName));
         });
       }
       return true;
@@ -2635,8 +2636,12 @@ function App() {
         <div className="debug-content">
           <div className="debug-section">
             <h2>User Management</h2>
-            <p>Total Users: 1,245</p>
-            <p>Active Today: 450</p>
+            <p>Total Registered: {records.length}</p>
+            <p>Active Today: {records.filter(r => {
+              const today = new Date().toLocaleDateString();
+              const lastUpd = (r.lastUpdated || r.timestamp || '');
+              return typeof lastUpd === 'string' && lastUpd.includes(today);
+            }).length}</p>
             <button className="auth-submit-btn" style={{ marginTop: '10px', background: '#333' }} onClick={() => setCurrentScreen('admin_users')}>Manage Users</button>
           </div>
           <div className="debug-section">
@@ -2816,7 +2821,7 @@ function App() {
           <div className="debug-section">
             <h2>Registered Users ({records.length})</h2>
             {records.map((record) => {
-              const isBlocked = blockedUsers.includes(record.id) || blockedUsers.includes(record.uid)
+              const isBlocked = (blockedUsers || []).includes(record.id) || (blockedUsers || []).includes(record.uid)
               return (
                 <div key={record.id || record.uid} className="record-card" style={{ marginBottom: '15px', padding: '15px', background: '#222', borderRadius: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -3823,9 +3828,9 @@ function App() {
                       )}
                     </div>
                     <span className="post-time">{
-                      userPost.timestamp.includes('T')
+                      userPost.timestamp && typeof userPost.timestamp === 'string' && userPost.timestamp.includes('T')
                         ? userPost.timestamp.split('T')[0]
-                        : userPost.timestamp.split(',')[0]
+                        : (userPost.timestamp || '').split(',')[0]
                     }</span>
                   </div>
                   <p className="post-message">{userPost.message}</p>
@@ -3867,6 +3872,16 @@ function App() {
                     </div>
                   </div>
                   <p className="post-message">{post.message}</p>
+                  {post.postImage && (
+                    <div className="post-image-container">
+                      <img src={post.postImage} alt="Post" className="post-image" />
+                    </div>
+                  )}
+                  {(post.village || post.district) && (
+                    <p className="post-location">
+                      {[post.village, post.mandal, post.district, post.state].filter(Boolean).join(', ')}
+                    </p>
+                  )}
                   <button className="see-more-btn">See more</button>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { ref, set, get, update, push, remove, serverTimestamp, query, orderByChild } from "firebase/database";
+import { ref, set, get, update, push, remove, serverTimestamp, query, orderByChild, equalTo } from "firebase/database";
 import { rtDb } from "./firebase";
 import { Capacitor } from '@capacitor/core';
 
@@ -92,6 +92,24 @@ class DatabaseService {
       return posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } catch (err) {
       console.error('Error getting posts:', err);
+      return [];
+    }
+  }
+
+  async getUserPosts(uid) {
+    if (!uid) return [];
+    try {
+      const postsRef = ref(rtDb, 'posts');
+      const userPostsQuery = query(postsRef, orderByChild('userId'), equalTo(uid));
+      const snapshot = await get(userPostsQuery);
+      if (!snapshot.exists()) return [];
+      const posts = [];
+      snapshot.forEach((child) => {
+        posts.push(child.val());
+      });
+      return posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    } catch (err) {
+      console.error('Error getting user posts:', err);
       return [];
     }
   }
