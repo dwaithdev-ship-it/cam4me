@@ -8,12 +8,12 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node server/index.js",
     "set-pass": "node scripts/set_user_password.cjs",
     "share": "ssh -o StrictHostKeyChecking=no -R 80:localhost:5173 serveo.net"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^7.0.2",
+    "@capacitor-firebase/authentication": "^8.0.1",
     "@capacitor/android": "^8.0.0",
     "@capacitor/camera": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
@@ -26,7 +26,8 @@
     "firebase": "^12.7.0",
     "pg": "^8.16.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-loader-spinner": "^8.0.2"
   },
   "optionalDependencies": {
     "sql.js": "^1.8.0"

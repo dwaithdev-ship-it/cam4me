@@ -1,110 +1,36 @@
-
+import { ref, set, get, update, push, remove, serverTimestamp, query, orderByChild } from "firebase/database";
+import { rtDb } from "./firebase";
 import { Capacitor } from '@capacitor/core';
 
 class DatabaseService {
   constructor() {
     this.isWeb = Capacitor.getPlatform() === 'web';
-    this.apiUrl = this.isWeb ? '/api' : 'http://localhost:5000/api';
-  }
-
-  async fetchWithTimeout(url, options = {}, timeout = 5000) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal
-      });
-      clearTimeout(id);
-      return response;
-    } catch (err) {
-      clearTimeout(id);
-      throw err;
-    }
   }
 
   async initialize() {
-    console.log('Database service initializing...');
+    console.log('Firebase Database service initializing...');
     try {
-      // 1.5s timeout for initial check to avoid long blocking
-      const resp = await this.fetchWithTimeout(`${this.apiUrl}/users`, { method: 'GET' }, 1500);
-      if (resp.ok) {
-        console.log('Backend connection successful');
-
-        const users = await resp.json();
-
-        if (this.isWeb && (!users || users.length === 0)) {
-          console.log('Database empty, attempting migration...');
-          await this.migrateFromLocalStorage(true);
-        } else if (this.isWeb && !localStorage.getItem('postgres_migrated')) {
-          this.migrateFromLocalStorage(false);
-        }
-        return true;
-      }
-      return false;
+      // Basic connectivity check: try to read a shared node or root
+      const snapshot = await get(ref(rtDb, '.info/connected'));
+      console.log('Firebase connection status:', snapshot.val());
+      return true;
     } catch (err) {
-      console.warn('Backend connection failed/timed out (' + err.message + '). Using offline/fallback mode if available.');
+      console.warn('Firebase connection failed:', err.message);
       return false;
     }
   }
 
-  async migrateFromLocalStorage(force = false) {
-    const migrated = localStorage.getItem('postgres_migrated');
-    if (migrated && !force) return;
-
-    console.log('Starting migration from localStorage to PostgreSQL...');
-    try {
-      // Migrate users
-      const usersStr = localStorage.getItem('sq_users');
-      if (usersStr) {
-        const users = JSON.parse(usersStr);
-        for (const uid in users) {
-          await this.saveUser(users[uid]);
-        }
-      }
-
-      // Migrate posts
-      const postsStr = localStorage.getItem('sq_posts');
-      if (postsStr) {
-        const posts = JSON.parse(postsStr);
-        for (const post of posts) {
-          await this.savePost(post);
-        }
-      }
-
-      // Migrate ads
-      const adsStr = localStorage.getItem('sq_ads');
-      if (adsStr) {
-        const ads = JSON.parse(adsStr);
-        for (const ad of ads) {
-          await this.saveAd(ad);
-        }
-      }
-
-      // Migrate feedbacks
-      const feedbacksStr = localStorage.getItem('sq_feedbacks');
-      if (feedbacksStr) {
-        const feedbacks = JSON.parse(feedbacksStr);
-        for (const fb of feedbacks) {
-          await this.saveFeedback(fb);
-        }
-      }
-
-      localStorage.setItem('postgres_migrated', 'true');
-      console.log('Migration completed');
-    } catch (err) {
-      console.error('Migration failed:', err);
-    }
-  }
-
+  // --- USER METHODS ---
   async saveUser(userData) {
+    if (!userData.uid) return null;
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-      return await res.json();
+      const userRef = ref(rtDb, `users/${userData.uid}`);
+      const dataToSave = {
+        ...userData,
+        lastUpdated: serverTimestamp()
+      };
+      await set(userRef, dataToSave);
+      return dataToSave;
     } catch (err) {
       console.error('Error saving user:', err);
       return userData;
@@ -112,10 +38,10 @@ class DatabaseService {
   }
 
   async getUser(uid) {
+    if (!uid) return null;
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/users/${uid}`);
-      if (!res.ok) return null;
-      return await res.json();
+      const snapshot = await get(ref(rtDb, `users/${uid}`));
+      return snapshot.exists() ? snapshot.val() : null;
     } catch (err) {
       console.error('Error getting user:', err);
       return null;
@@ -124,118 +50,171 @@ class DatabaseService {
 
   async getAllUsers() {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/users`);
-      return await res.json();
+      const snapshot = await get(ref(rtDb, 'users'));
+      if (!snapshot.exists()) return [];
+      const users = [];
+      snapshot.forEach((child) => {
+        users.push(child.val());
+      });
+      return users.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
     } catch (err) {
       console.error('Error getting all users:', err);
       return [];
     }
   }
 
+  // --- POST METHODS ---
   async savePost(post) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/posts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(post)
-      });
-      return await res.json();
+      const id = post.id || push(ref(rtDb, 'posts')).key;
+      const postRef = ref(rtDb, `posts/${id}`);
+      const dataToSave = {
+        ...post,
+        id,
+        timestamp: post.timestamp || new Date().toISOString()
+      };
+      await set(postRef, dataToSave);
+      return dataToSave;
     } catch (err) {
       console.error('Error saving post:', err);
-      return post;
+      throw err; // Propagate error to caller
     }
   }
 
   async getPosts() {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/posts`);
-      if (!res.ok) return [];
-      return await res.json();
+      const snapshot = await get(ref(rtDb, 'posts'));
+      if (!snapshot.exists()) return [];
+      const posts = [];
+      snapshot.forEach((child) => {
+        posts.push(child.val());
+      });
+      return posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } catch (err) {
       console.error('Error getting posts:', err);
       return [];
     }
   }
 
-  async deletePostsByUser(uid) {
+  async deletePost(id) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/posts/user/${uid}`, { method: 'DELETE' });
-      const data = await res.json();
-      return data.success;
+      await remove(ref(rtDb, `posts/${id}`));
+      return true;
     } catch (err) {
+      console.error('Error deleting post:', err);
       return false;
     }
   }
 
+  async deletePostsByUser(uid) {
+    try {
+      const snapshot = await get(ref(rtDb, 'posts'));
+      if (!snapshot.exists()) return true;
+
+      const updates = {};
+      snapshot.forEach((child) => {
+        if (child.val().userId === uid) {
+          updates[`posts/${child.key}`] = null;
+        }
+      });
+      await update(ref(rtDb), updates);
+      return true;
+    } catch (err) {
+      console.error('Error deleting user posts:', err);
+      return false;
+    }
+  }
+
+  // --- AD METHODS ---
   async saveAd(ad) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/ads`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ad)
-      });
-      return await res.json();
+      const id = ad.id || push(ref(rtDb, 'ads')).key;
+      const adRef = ref(rtDb, `ads/${id}`);
+      const dataToSave = {
+        ...ad,
+        id,
+        timestamp: ad.timestamp || new Date().toISOString()
+      };
+      await set(adRef, dataToSave);
+      return dataToSave;
     } catch (err) {
+      console.error('Error saving ad:', err);
       return ad;
     }
   }
 
   async getAds() {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/ads`);
-      if (!res.ok) return [];
-      return await res.json();
+      const snapshot = await get(ref(rtDb, 'ads'));
+      if (!snapshot.exists()) return [];
+      const ads = [];
+      snapshot.forEach((child) => {
+        ads.push(child.val());
+      });
+      return ads.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } catch (err) {
+      console.error('Error getting ads:', err);
       return [];
     }
   }
 
   async deleteAd(id) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/ads/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      return data.success;
+      await remove(ref(rtDb, `ads/${id}`));
+      return true;
     } catch (err) {
+      console.error('Error deleting ad:', err);
       return false;
     }
   }
 
+  // --- FEEDBACK METHODS ---
   async saveFeedback(feedback) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/feedbacks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedback)
-      });
-      return await res.json();
+      const id = push(ref(rtDb, 'feedbacks')).key;
+      const feedbackRef = ref(rtDb, `feedbacks/${id}`);
+      const dataToSave = {
+        ...feedback,
+        id,
+        timestamp: new Date().toISOString()
+      };
+      await set(feedbackRef, dataToSave);
+      return dataToSave;
     } catch (err) {
+      console.error('Error saving feedback:', err);
       return feedback;
     }
   }
 
   async getAllFeedbacks() {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/feedbacks`);
-      if (!res.ok) return [];
-      return await res.json();
+      const snapshot = await get(ref(rtDb, 'feedbacks'));
+      if (!snapshot.exists()) return [];
+      const feedbacks = [];
+      snapshot.forEach((child) => {
+        feedbacks.push(child.val());
+      });
+      return feedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     } catch (err) {
+      console.error('Error getting feedbacks:', err);
       return [];
     }
   }
 
-  async deleteUser(uid) {
-    return false;
-  }
-
-  // Notification Methods
+  // --- NOTIFICATION METHODS ---
   async saveNotification(notification) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notification)
-      });
-      return await res.json();
+      const id = notification.id || push(ref(rtDb, 'notifications')).key;
+      const notifRef = ref(rtDb, `notifications/${id}`);
+      const now = new Date().toISOString();
+      const dataToSave = {
+        ...notification,
+        id,
+        createdAt: notification.createdAt || now,
+        updatedAt: now
+      };
+      await set(notifRef, dataToSave);
+      return dataToSave;
     } catch (err) {
       console.error('Error saving notification:', err);
       return notification;
@@ -244,9 +223,13 @@ class DatabaseService {
 
   async getNotifications() {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications`);
-      if (!res.ok) return [];
-      return await res.json();
+      const snapshot = await get(ref(rtDb, 'notifications'));
+      if (!snapshot.exists()) return [];
+      const notifications = [];
+      snapshot.forEach((child) => {
+        notifications.push(child.val());
+      });
+      return notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     } catch (err) {
       console.error('Error getting notifications:', err);
       return [];
@@ -255,12 +238,14 @@ class DatabaseService {
 
   async updateNotification(id, updates) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      return await res.json();
+      const notifRef = ref(rtDb, `notifications/${id}`);
+      const dataToUpdate = {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      await update(notifRef, dataToUpdate);
+      const snapshot = await get(notifRef);
+      return snapshot.val();
     } catch (err) {
       console.error('Error updating notification:', err);
       return null;
@@ -269,16 +254,25 @@ class DatabaseService {
 
   async deleteNotification(id) {
     try {
-      const res = await this.fetchWithTimeout(`${this.apiUrl}/notifications/${id}`, {
-        method: 'DELETE'
-      });
-      const data = await res.json();
-      return data.success;
+      await remove(ref(rtDb, `notifications/${id}`));
+      return true;
     } catch (err) {
       console.error('Error deleting notification:', err);
+      return false;
+    }
+  }
+
+  async deleteUser(uid) {
+    try {
+      await remove(ref(rtDb, `users/${uid}`));
+      await this.deletePostsByUser(uid);
+      return true;
+    } catch (err) {
+      console.error('Error deleting user:', err);
       return false;
     }
   }
 }
 
 export const database = new DatabaseService();
+

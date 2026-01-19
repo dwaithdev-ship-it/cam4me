@@ -14,7 +14,7 @@ import { Capacitor } from '@capacitor/core'
 /** 
  * FIREBASE RESTORED - CONNECTED TO LIVE BACKEND 
  */
-import { auth, googleProvider, facebookProvider, twitterProvider, db } from './firebase'
+import { auth, googleProvider, facebookProvider, twitterProvider, db, getAdditionalUserInfo } from './firebase'
 import { onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc, deleteDoc, updateDoc, collection, query, where, onSnapshot, getDoc } from 'firebase/firestore'
 // Firestore only used for Auth if necessary, but all app data moves to database.js (SQLite)
@@ -157,6 +157,7 @@ function App() {
   const [savingAd, setSavingAd] = useState(false)
   const [lastAdError, setLastAdError] = useState(null)
   const [runtimeError, setRuntimeError] = useState(null)
+  const [isPublishing, setIsPublishing] = useState(false)
 
   // -------------------------------------------------------------
   // LOCAL STORAGE EFFECTS (Replaces Firebase Listeners)
@@ -221,20 +222,21 @@ function App() {
 
     const syncAndNavigate = async () => {
       try {
+        console.log('[Auth] Syncing user data for:', currentUser.uid);
         let data = await database.getUser(currentUser.uid);
 
         // Data Recovery: If local missing, try Firestore
         if (!data) {
-          console.log("Local data missing, checking Firestore...");
+          console.log("[Auth] Local data missing, checking Firestore...");
           try {
             const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
             if (userDoc.exists()) {
-              console.log("Found backup in Firestore, restoring...");
+              console.log("[Auth] Found backup in Firestore, restoring...");
               data = userDoc.data();
               await database.saveUser(data); // Restore to local
             }
           } catch (cloudErr) {
-            console.warn("Firestore fetch failed:", cloudErr);
+            console.warn("[Auth] Firestore fetch failed:", cloudErr);
           }
         }
 
@@ -254,19 +256,26 @@ function App() {
           const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
           const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
 
-          if (currentScreen === 'signin' || currentScreen === 'signup' || currentScreen === 'terms') {
-            // Only redirect to terms/profile if NOT an authorized staff member
+          // Only auto-navigate if we are on an auth screen
+          if (currentScreen === 'signin' || currentScreen === 'signup' || currentScreen === 'terms' || currentScreen === 'forgot_password') {
             if (!isAdmin && !isManager) {
-              if (data.setupCompleted) setCurrentScreen('feed');
-              else if (data.termsAccepted) setCurrentScreen('profile');
-              else setCurrentScreen('terms');
+              if (data.setupCompleted) {
+                console.log('[Auth] Setup complete, going to feed');
+                setCurrentScreen('feed');
+              } else if (data.termsAccepted) {
+                console.log('[Auth] Terms accepted, going to profile');
+                setCurrentScreen('profile');
+              } else {
+                console.log('[Auth] Going to terms');
+                setCurrentScreen('terms');
+              }
             } else {
-              // For staff, go to feed if they have a user profile, otherwise stay put or manual navigation
               if (data.setupCompleted) setCurrentScreen('feed');
             }
           }
         } else {
           // New User or No Data Found
+          console.log('[Auth] No data found, assuming new user');
           const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
           const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
 
@@ -281,11 +290,11 @@ function App() {
         const myLastPost = allPosts.find(p => p.userId === currentUser.uid);
         if (myLastPost) setUserPost(myLastPost);
       } catch (err) {
-        console.error("Auth sync error:", err);
+        console.error("[Auth] Sync error:", err);
       }
     };
     syncAndNavigate();
-  }, [currentUser, AUTHORIZED_ADMINS, AUTHORIZED_MANAGERS]);
+  }, [currentUser, currentScreen]); // Added currentScreen to dependency
 
   // Sync Post Text when entering 'newpost' screen
   const hasInitializedPostRef = useRef(false)
@@ -473,9 +482,9 @@ function App() {
       }
 
       await database.saveUser(updatedData);
-      console.log('Session data synced to PostgreSQL');
+      console.log('Session data synced to Firebase');
     } catch (err) {
-      console.error('Failed to sync session to PostgreSQL:', err);
+      console.error('Failed to sync session to Firebase:', err);
     }
   }
 
@@ -572,17 +581,33 @@ function App() {
 
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      const { isNewUser } = getAdditionalUserInfo(result);
 
-      // Sync with Local SQLite
-      await database.saveUser({
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName,
-        photo: user.photoURL,
-        setupCompleted: false
-      });
+      console.log('[Auth] Social Login Successful:', user.uid, 'isNewUser:', isNewUser);
 
-      alert(`Welcome ${user.displayName || user.email}`);
+      // FORCE NAVIGATION FOR NEW USERS (Failsafe for race conditions)
+      if (isNewUser) {
+        console.log('[Auth] New User Detected via Metadata - Forcing Terms Screen');
+        await database.saveUser({
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName,
+          photo: user.photoURL,
+          setupCompleted: false,
+          termsAccepted: false
+        });
+        setCurrentScreen('terms');
+        return; // Stop here, let the reactive sync handle data persistence in bg if needed
+      }
+
+      // FOR RETURNING USERS:
+      // We rely on the main useEffect(syncAndNavigate) to restore their state.
+      // However, if we just stay on 'signup'/'signin', it looks broken.
+      // The useEffect SHOULD pick it up. 
+      // We can add a small fallback check if needed, but per user request,
+      // we only force 'terms' for first time login.
+
+      alert(`Welcome back ${user.displayName || user.email}`);
     } catch (error) {
       console.error("Social Login Error:", error);
       // Don't show alert if user simply closed the popup
@@ -734,13 +759,22 @@ function App() {
     setShowProfileImagePicker(false)
     try {
       const image = await Camera.getPhoto({
-        quality: 90,
+        quality: 70, // Compressed
+        width: 800,  // Profile photos can be smaller
         allowEditing: true,
         resultType: CameraResultType.DataUrl,
         source: source
       })
 
       if (image && image.dataUrl) {
+        // Also apply client-side compression just in case
+        // (Note: Since compressImage returns a promise, you'd usually await it, 
+        // but since we are just inside a simple Try block, we might as well trust Camera options first)
+        // However, if we want to reuse the helper for aggressive compression:
+        // const compressed = await compressImage(image.dataUrl, 800, 0.7)
+        // setProfileData({ ...profileData, photo: compressed })
+
+        // For now, let's rely on the Camera options which are native/faster
         setProfileData({ ...profileData, photo: image.dataUrl })
       }
     } catch (error) {
@@ -1026,6 +1060,34 @@ function App() {
     }
   }
 
+  // Image Compression Utility
+  const compressImage = (dataUrl, maxWidth = 1600, quality = 0.85) => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.src = dataUrl
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.onerror = (err) => {
+        console.error('Image compression error:', err)
+        resolve(dataUrl) // Fallback to original
+      }
+    })
+  }
+
   const handleGalleryUpload = async () => {
     try {
       // Check if Capacitor is available (mobile) or we're on web
@@ -1043,8 +1105,9 @@ function App() {
           const file = event.target.files[0]
           if (file) {
             const reader = new FileReader()
-            reader.onload = (e) => {
-              setPostImage(e.target.result)
+            reader.onload = async (e) => {
+              const compressed = await compressImage(e.target.result)
+              setPostImage(compressed)
             }
             reader.onerror = (e) => {
               console.error("FileReader error", e)
@@ -1055,16 +1118,14 @@ function App() {
           document.body.removeChild(input)
         }
 
-        // Safety cleanup if user cancels (optional, but keeps DOM clean eventually)
-        // setTimeout(() => { if(document.body.contains(input)) document.body.removeChild(input) }, 60000)
-
         input.click()
         return
       }
 
       // Mobile app - use Capacitor Camera
       const image = await Camera.getPhoto({
-        quality: 90,
+        quality: 85, // Increased from 70
+        width: 1600, // Increased from 1024
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Photos
@@ -1097,8 +1158,9 @@ function App() {
           const file = event.target.files[0]
           if (file) {
             const reader = new FileReader()
-            reader.onload = (e) => {
-              setPostImage(e.target.result)
+            reader.onload = async (e) => {
+              const compressed = await compressImage(e.target.result)
+              setPostImage(compressed)
             }
             reader.readAsDataURL(file)
           }
@@ -1120,7 +1182,8 @@ function App() {
       }
 
       const image = await Camera.getPhoto({
-        quality: 90,
+        quality: 85, // Increased from 70
+        width: 1600, // Increased from 1024
         allowEditing: true,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera // Use camera directly
@@ -1203,6 +1266,9 @@ function App() {
 
   const handlePublishPost = async () => {
     if (!postText) return alert('Please write something for your post')
+    if (!currentUser) return alert('You must be logged in to post. Please try reloading the app.')
+
+    setIsPublishing(true);
 
     // Prepare data
     const finalProfilePhoto = profileData.photo || null
@@ -1240,10 +1306,13 @@ function App() {
       // Standard behavior is to go to feed. But to satisfy "last post displayed", we can stay?
       // "Post Published to Feed!" implies we go there. I will keep existing behavior.
       setCurrentScreen('feed')
+      setCurrentScreen('feed')
       alert(editingPostId ? "Post Updated Successfully!" : "Post Published to Feed!");
     } catch (err) {
       console.error("Publish Error:", err);
       alert("Failed to publish post: " + err.message);
+    } finally {
+      setIsPublishing(false)
     }
   }
 
@@ -2186,8 +2255,13 @@ function App() {
             <button className="newpost-action-btn edit-btn" onClick={handleEditPost}>
               Edit
             </button>
-            <button className="newpost-action-btn post-btn" onClick={handlePublishPost}>
-              {editingPostId ? 'Update' : 'Post'}
+            <button
+              className="newpost-action-btn post-btn"
+              onClick={handlePublishPost}
+              disabled={isPublishing}
+              style={{ opacity: isPublishing ? 0.7 : 1, cursor: isPublishing ? 'wait' : 'pointer' }}
+            >
+              {isPublishing ? (editingPostId ? 'Updating...' : 'Posting...') : (editingPostId ? 'Update' : 'Post')}
             </button>
           </div>
         </div>
@@ -3754,12 +3828,12 @@ function App() {
                         : userPost.timestamp.split(',')[0]
                     }</span>
                   </div>
+                  <p className="post-message">{userPost.message}</p>
                   {userPost.postImage && (
                     <div className="post-image-container">
                       <img src={userPost.postImage} alt="Post" className="post-image" />
                     </div>
                   )}
-                  <p className="post-message">{userPost.message}</p>
                   <p className="post-location">
                     {userPost.village}, {userPost.mandal}, {userPost.district}, {userPost.state}
                   </p>
@@ -3773,29 +3847,7 @@ function App() {
                       </svg>
                       Edit
                     </button>
-                    <button className="delete-post-btn" onClick={() => {
-                      (async () => {
-                        if (!window.confirm('Are you sure you want to delete this post?')) return
-                        try {
-                          if (userPost?.firebaseId) {
-                            await deleteDoc(doc(db, 'posts', userPost.firebaseId))
-                            await updateDoc(doc(db, 'users', currentUser.uid), { userPost: null })
-                          }
-                          setUserPost(null)
-                          setPostText('')
-                          setPostImage(null)
-                          alert('Post deleted successfully!')
-                        } catch (err) {
-                          console.error('Delete post error:', err)
-                          alert('Failed to delete post: ' + (err.message || err))
-                        }
-                      })()
-                    }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                      </svg>
-                      Delete
-                    </button>
+                    {/* Delete button removed as per user request */}
                   </div>
                 </div>
               </div>

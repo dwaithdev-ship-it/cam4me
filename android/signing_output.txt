@@ -1,0 +1,119 @@
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :app:signingReport
+Variant: debug
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+Variant: release
+Config: null
+Store: null
+Alias: null
+----------
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+> Task :capacitor-android:signingReport
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+> Task :capacitor-camera:signingReport
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+> Task :capacitor-community-sqlite:signingReport
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+> Task :capacitor-cordova-android-plugins:signingReport
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+> Task :capacitor-firebase-authentication:signingReport
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+> Task :capacitor-geolocation:signingReport
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+> Task :capacitor-preferences:signingReport
+Variant: debugAndroidTest
+Config: debug
+Store: C:\Users\PC\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 26:22:D3:4F:0D:7F:A2:4F:21:79:E5:42:1F:D2:DA:20
+SHA1: 3F:80:48:3B:DA:3D:06:FC:0D:CB:49:60:F5:B6:FE:31:9C:47:31:35
+SHA-256: CB:29:29:DF:EF:47:96:00:3A:78:55:DD:47:12:25:C1:88:32:64:A1:68:8A:5D:8C:CA:AF:15:D4:39:EF:45:9B
+Valid until: Thursday, 17 June, 2055
+----------
+
+[Incubating] Problems report is available at: file:///C:/Users/PC/cam4me/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 6s
+8 actionable tasks: 8 executed
