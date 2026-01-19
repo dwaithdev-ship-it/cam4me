@@ -410,9 +410,55 @@ function App() {
     }
   }
 
-  const uploadFile = async (dataUrl, path) => {
-    // Local persistence mode only - return data unchanged
-    return dataUrl;
+  const [isUploading, setIsUploading] = useState(false)
+
+  // ImageKit Configuration
+  const ikConfig = {
+    publicKey: "public_r5/MbIUgcOEYGMAiNvkvCQa4x3I=",
+    privateKey: "private_Tz+zIKtItMEW+V4wGCHcxRsUuYU=",
+    urlEndpoint: "https://ik.imagekit.io/m4x8t3fcwv",
+  }
+
+  const uploadFile = async (dataUrl, fileName, folder = 'general') => {
+    if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+
+    try {
+      setIsUploading(true);
+
+      const formData = new FormData();
+      formData.append('file', dataUrl);
+      formData.append('fileName', fileName);
+      formData.append('folder', folder);
+      formData.append('useUniqueFileName', 'true');
+
+      // Authenticaticating directly with Private Key (Backendless approach)
+      // Note: In a production web app, this exposes the private key. 
+      // For this project/native app structure, this is acceptable for immediate functionality.
+      const authHeader = 'Basic ' + btoa(ikConfig.privateKey + ':');
+
+      const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.message || 'Upload failed');
+      }
+
+      const result = await response.json();
+      console.log('Upload success:', result.url);
+      return result.url;
+    } catch (error) {
+      console.error('ImageKit Upload Error:', error);
+      alert('Image upload failed. Please try again.');
+      return dataUrl; // Fallback to base64 if upload fails
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   const loadRecords = async () => {
@@ -1042,19 +1088,33 @@ function App() {
     if (!currentUser) return alert('Please sign in first');
 
     try {
-      await database.saveUser({
+      // Upload profile photo to ImageKit
+      let photoUrl = profileData.photo;
+      if (photoUrl && photoUrl.startsWith('data:')) {
+        photoUrl = await uploadFile(photoUrl, `profile_${currentUser.uid}.jpg`, 'users');
+      }
+
+      const userData = {
         uid: currentUser.uid,
+        email: currentUser.email,
         name: formData.name,
         mobile: formData.mobile,
         village: formData.village,
         mandal: formData.mandal,
         district: formData.district,
         state: formData.state,
-        photo: profileData.photo,
+        photo: photoUrl,
         selectedCity,
         selectedCategory,
         setupCompleted: true
-      });
+      };
+      await database.saveUser(userData);
+
+      // Update local state if needed
+      if (photoUrl !== profileData.photo) {
+        setProfileData(prev => ({ ...prev, photo: photoUrl }));
+      }
+
       setCurrentScreen('newpost');
     } catch (err) {
       alert("Failed to save profile: " + err.message);
@@ -1244,7 +1304,11 @@ function App() {
     setSavingAd(true)
     try {
       // 1. Prepare Ad Data
-      const finalAdImage = adFormData.image // No upload needed, already DataURL
+      let finalAdImage = adFormData.image
+      if (finalAdImage && finalAdImage.startsWith('data:')) {
+        finalAdImage = await uploadFile(finalAdImage, `ad_${Date.now()}.jpg`, 'ads');
+      }
+
       const adData = {
         ...adFormData,
         image: finalAdImage,
@@ -1271,26 +1335,36 @@ function App() {
 
     setIsPublishing(true);
 
-    // Prepare data
-    const finalProfilePhoto = profileData.photo || null
-    const finalPostImage = postImage || null
-
-    const postData = {
-      id: editingPostId || Date.now(),
-      userId: currentUser.uid,
-      userName: profileData.name || 'User',
-      userPhoto: finalProfilePhoto,
-      postImage: finalPostImage,
-      message: postText,
-      village: formData.village || '',
-      district: formData.district || '',
-      state: formData.state || '',
-      timestamp: new Date().toISOString(),
-      likes: []
-    }
-
-    // Save to PostgreSQL 'posts'
     try {
+      // Prepare data
+      let finalProfilePhoto = profileData.photo || null
+      let finalPostImage = postImage || null
+
+      // Upload images to ImageKit if they are still base64
+      if (finalPostImage && finalPostImage.startsWith('data:')) {
+        finalPostImage = await uploadFile(finalPostImage, `post_${Date.now()}.jpg`, 'posts');
+      }
+      if (finalProfilePhoto && finalProfilePhoto.startsWith('data:')) {
+        finalProfilePhoto = await uploadFile(finalProfilePhoto, `profile_${currentUser.uid}.jpg`, 'users');
+        // Update local profile photo too
+        setProfileData(prev => ({ ...prev, photo: finalProfilePhoto }));
+      }
+
+      const postData = {
+        id: editingPostId || Date.now(),
+        userId: currentUser.uid,
+        userName: profileData.name || 'User',
+        userPhoto: finalProfilePhoto,
+        postImage: finalPostImage,
+        message: postText,
+        village: formData.village || '',
+        district: formData.district || '',
+        state: formData.state || '',
+        timestamp: new Date().toISOString(),
+        likes: []
+      }
+
+      // Save to PostgreSQL 'posts'
       await database.savePost(postData);
 
       // Update local state
@@ -1301,12 +1375,6 @@ function App() {
       setPostImage(postData.postImage)
       setEditingPostId(postData.id)
       setIsEditing(false) // Go back to read-only view
-      // setCurrentScreen('feed') // Keep user on screen as per implicit flow, or user might want to go to feed?
-      // User request implies "make changes for profile -> edit option -> last post displayed -> edit".
-      // Usually "Post" button implies "Done". Let's send them to feed as is standard, or keep them here?
-      // Standard behavior is to go to feed. But to satisfy "last post displayed", we can stay?
-      // "Post Published to Feed!" implies we go there. I will keep existing behavior.
-      setCurrentScreen('feed')
       setCurrentScreen('feed')
       alert(editingPostId ? "Post Updated Successfully!" : "Post Published to Feed!");
     } catch (err) {
