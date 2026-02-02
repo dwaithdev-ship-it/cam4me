@@ -2303,3 +2303,50 @@ body {
   width: 100%;
   max-width: 360px;
 }
+
+/* Premium Auth Styles */
+.welcome-bg {
+  background: radial-gradient(circle at 50% -20%, rgba(26, 35, 50, 0.8) 0%, transparent 100%),
+    linear-gradient(135deg, #1a2332 0%, #4a3859 50%, #8b2e5e 100%) !important;
+}
+
+.premium-auth-btn {
+  width: 100%;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.premium-auth-btn:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.logo-pulse {
+  animation: pulse-glow 3s infinite ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+  }
+
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
+  }
+
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+  }
+}

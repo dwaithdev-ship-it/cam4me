@@ -2,7 +2,7 @@ import { getDatabase } from "firebase/database";
 import { initializeApp } from "firebase/app";
 import { Capacitor } from "@capacitor/core";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
-import { getAuth, GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider, getAdditionalUserInfo, signInWithPopup, signInWithCredential } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider, getAdditionalUserInfo, signInWithPopup, signInWithCredential, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { getFirestore, doc, deleteDoc } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
@@ -49,6 +49,6 @@ const deleteUserData = async (userId) => {
   }
 };
 
-export { auth, googleProvider, facebookProvider, twitterProvider, db, rtDb, deleteUserData, getAdditionalUserInfo, signInWithGoogle };
+export { auth, googleProvider, facebookProvider, twitterProvider, db, rtDb, deleteUserData, getAdditionalUserInfo, signInWithGoogle, RecaptchaVerifier, signInWithPhoneNumber };
 export default app;
 

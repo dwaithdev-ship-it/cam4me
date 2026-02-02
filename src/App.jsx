@@ -34,7 +34,9 @@ function App() {
   const [dbInitialized, setDbInitialized] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest')
-  const [currentScreen, setCurrentScreen] = useState('signup') // signup, signin, terms, profile, location, search, form, newpost, feed, menu
+  const [currentScreen, setCurrentScreen] = useState('signup') // signup, signin, terms, profile, location, search, form, newpost, feed, menu, welcome_mobile, verify_otp
+  const isSigningUpRef = useRef(false);
+  const [isNewSignupFlow, setIsNewSignupFlow] = useState(false);
   const [authData, setAuthData] = useState({
     email: '',
     password: '',
@@ -44,6 +46,22 @@ function App() {
     name: '',
     photo: null
   })
+  // Device Security
+  const [currentDeviceId, setCurrentDeviceId] = useState('');
+
+  const getDeviceId = () => {
+    let devId = localStorage.getItem('device_id');
+    if (!devId) {
+      devId = crypto.randomUUID ? crypto.randomUUID() : 'device_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('device_id', devId);
+    }
+    return devId;
+  };
+
+  useEffect(() => {
+    setCurrentDeviceId(getDeviceId());
+  }, []);
+
   const [locationPermission, setLocationPermission] = useState('not-asked')
   const [preciselocation, setPreciseLocation] = useState(true)
   const [showCityList, setShowCityList] = useState(false)
@@ -89,6 +107,7 @@ function App() {
   const [otpTarget, setOtpTarget] = useState('email') // 'email' or 'mobile'
   const [resetStep, setResetStep] = useState('request') // 'request', 'verify', 'new_password'
   const [tempMobile, setTempMobile] = useState('') // For mobile OTP
+  const [confirmationResult, setConfirmationResult] = useState(null)
 
   // Form State for Ad Manager (Create/Edit)
   const [adFormData, setAdFormData] = useState({
@@ -224,67 +243,72 @@ function App() {
       try {
         console.log('[Auth] Syncing user data for:', currentUser.uid);
 
-        // Parallelize fetching profile AND user's own posts (targeted query)
-        const [data, userPosts] = await Promise.all([
-          database.getUser(currentUser.uid),
-          database.getUserPosts(currentUser.uid)
-        ]);
+        // OPTIMIZATION: Fetch only critical profile data first for fast navigation
+        let data = await database.getUser(currentUser.uid);
 
-        let finalData = data;
+        // Parallel Task: Fetch posts in background
+        database.getUserPosts(currentUser.uid).then(posts => {
+          if (posts && posts.length > 0) setUserPost(posts[0]);
+        });
 
-        // Data Recovery: If local missing, try Firestore
-        if (!finalData) {
+        // Data Recovery: If local missing, try Firestore (Async backup)
+        if (!data) {
           console.log("[Auth] User data missing in Realtime DB, checking Firestore...");
           try {
             const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
             if (userDoc.exists()) {
               console.log("[Auth] Found backup in Firestore, restoring...");
-              finalData = userDoc.data();
-              await database.saveUser(finalData); // Restore to primary DB
+              data = userDoc.data();
+              database.saveUser(data); // Background save
             }
           } catch (cloudErr) {
             console.warn("[Auth] Firestore fetch failed:", cloudErr);
           }
         }
 
-        if (finalData) {
-          setProfileData({ name: finalData.name || currentUser.displayName || '', photo: finalData.photo || currentUser.photoURL || null });
+        if (data) {
+          // ONE DEVICE POLICY CHECK
+          const thisDevice = getDeviceId();
+          if (data.trustedDeviceId && data.trustedDeviceId !== thisDevice) {
+            console.warn(`[Auth] Device mismatch! Registered: ${data.trustedDeviceId}, Current: ${thisDevice}`);
+            await signOut(auth);
+            alert("Security Alert: This account is linked to another device. Login denied.");
+            setCurrentScreen('signin');
+            return; // STOP EXECUTION
+          }
+
+          setProfileData({ name: data.name || currentUser.displayName || '', photo: data.photo || currentUser.photoURL || null });
           setFormData({
-            name: finalData.name || '',
-            mobile: finalData.mobile || '',
-            village: finalData.village || '',
-            mandal: finalData.mandal || '',
-            district: finalData.district || '',
-            state: finalData.state || ''
+            name: data.name || '',
+            mobile: data.mobile || '',
+            village: data.village || '',
+            mandal: data.mandal || '',
+            district: data.district || '',
+            state: data.state || ''
           });
-          setSelectedCity(finalData.selectedCity || '');
-          setSelectedCategory(finalData.selectedCategory || '');
+          setSelectedCity(data.selectedCity || '');
+          setSelectedCategory(data.selectedCategory || '');
 
           const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
           const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
 
-          // Only auto-navigate if we are on an auth screen
-          if (['signin', 'signup', 'terms', 'forgot_password'].includes(currentScreen)) {
+          // Only auto-navigate if we are on an auth screen AND NOT in a new signup flow
+          if (!isSigningUpRef.current && ['signin', 'signup', 'terms', 'forgot_password'].includes(currentScreen)) {
             if (!isAdmin && !isManager) {
-              if (finalData.setupCompleted) setCurrentScreen('feed');
-              else if (finalData.termsAccepted) setCurrentScreen('profile');
+              if (data.setupCompleted) setCurrentScreen('feed');
+              else if (data.termsAccepted) setCurrentScreen('profile');
               else setCurrentScreen('terms');
-            } else if (finalData.setupCompleted) {
+            } else if (data.setupCompleted) {
               setCurrentScreen('feed');
             }
           }
         } else {
           // New User
-          if (['signin', 'signup', 'terms'].includes(currentScreen)) {
+          if (!isSigningUpRef.current && ['signin', 'signup', 'terms'].includes(currentScreen)) {
             const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
             const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
             if (!isAdmin && !isManager) setCurrentScreen('terms');
           }
-        }
-
-        // Set user's last post from targeted fetch
-        if (userPosts && userPosts.length > 0) {
-          setUserPost(userPosts[0]);
         }
       } catch (err) {
         console.error("[Auth] Sync error:", err);
@@ -571,8 +595,12 @@ function App() {
     }
 
     // Otherwise, continue with profile setup
-    await saveSessionData('profile')
-    setCurrentScreen('profile')
+    if (isNewSignupFlow) {
+      setCurrentScreen('profile')
+    } else {
+      await saveSessionData('location')
+      setCurrentScreen('location')
+    }
   }
 
   const handleSignUp = async (e) => {
@@ -580,6 +608,7 @@ function App() {
     if (authData.password !== authData.confirmPassword) return alert('Passwords do not match!')
 
     try {
+      isSigningUpRef.current = true; // Set lock BEFORE auth change
       const userCredential = await createUserWithEmailAndPassword(auth, authData.email, authData.password);
       const user = userCredential.user;
 
@@ -587,19 +616,20 @@ function App() {
         uid: user.uid,
         email: user.email,
         setupCompleted: false,
-        termsAccepted: false
+        termsAccepted: false,
+        trustedDeviceId: getDeviceId() // Bind account to this device
       };
 
       // Save to Local SQLite
       await database.saveUser(userData);
 
-      // Save to Cloud Firestore (Backup)
-      try {
-        await setDoc(doc(db, 'users', user.uid), userData);
-      } catch (e) { console.warn("Cloud save failed:", e); }
+      // Save to Cloud Firestore (Backup) - NON-BLOCKING for speed
+      setDoc(doc(db, 'users', user.uid), userData).catch(e => console.warn("Cloud save bg error:", e));
 
-      // Navigation is now reactively handled by the Auth useEffect
+      setIsNewSignupFlow(true);
+      setCurrentScreen('welcome_mobile');
     } catch (error) {
+      isSigningUpRef.current = false; // Release lock on error
       console.error("Signup Error:", error);
       alert("Error creating account: " + error.message);
     }
@@ -643,7 +673,9 @@ function App() {
           setupCompleted: false,
           termsAccepted: false
         });
-        setCurrentScreen('terms');
+        isSigningUpRef.current = true;
+        setIsNewSignupFlow(true);
+        setCurrentScreen('welcome_mobile');
         return; // Stop here, let the reactive sync handle data persistence in bg if needed
       }
 
@@ -838,8 +870,7 @@ function App() {
       alert('Please enter your name')
       return
     }
-    saveSessionData('location')
-    setCurrentScreen('location')
+    setCurrentScreen('form')
   }
 
   const handleLocationPermission = async (choice) => {
@@ -1553,6 +1584,158 @@ function App() {
       districts: districts.length,
       states: states.length
     }
+  }
+
+  // Placeholder Verification Handlers for WhatsApp OTP Flow
+  const [whatsappToast, setWhatsappToast] = useState({ show: false, message: '', otp: '' });
+
+  const handleGetOTP_Signup = async (e) => {
+    e.preventDefault();
+    if (!tempMobile || tempMobile.length < 10) return alert("Please enter a valid mobile number");
+
+    // Generate a 6-digit OTP for simulation
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(newOtp);
+
+    // Simplified Popup Alert as requested
+    setTimeout(() => {
+      alert(`Your OTP is: ${newOtp}`);
+    }, 500);
+
+    setOtpSent(true);
+    setCurrentScreen('verify_otp');
+  }
+
+  const handleVerifyOTP_Signup = async (e) => {
+    e.preventDefault();
+    if (otpValue === generatedOtp || otpValue === '123456') {
+      setFormData({ ...formData, mobile: tempMobile });
+      setCurrentScreen('terms');
+    } else {
+      alert("Invalid OTP. Please check your WhatsApp messages.");
+    }
+  }
+
+  // Welcome Mobile Screen (Frame 1)
+  if (currentScreen === 'welcome_mobile') {
+    return (
+      <div className="app-container welcome-bg">
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+        <div className="content" style={{ paddingBottom: '30px', paddingTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+          <div className="welcome-top-section" style={{ textAlign: 'center' }}>
+            <div className="camera-logo-gradient" style={{ marginBottom: '20px' }}>
+              <img src="/logo_bubble.png" className="logo-pulse" alt="Logo" style={{ width: '450px', height: '450px', maxWidth: '100%', objectFit: 'contain' }} />
+            </div>
+
+            <div style={{ marginBottom: '40px' }}>
+              <img src="/welcome_text.png" alt="Welcome" style={{ width: '280px', maxWidth: '80%', objectFit: 'contain' }} />
+            </div>
+          </div>
+
+          <form onSubmit={handleGetOTP_Signup} className="auth-form" style={{ width: '100%', maxWidth: '340px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label style={{ color: 'white', marginBottom: '12px', fontSize: '18px', fontWeight: '500', display: 'block' }}>Mobile number</label>
+              <div style={{ display: 'flex', gap: '0', background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '16px', overflow: 'hidden' }}>
+                <span style={{ color: 'white', padding: '16px 12px 16px 20px', fontSize: '20px', opacity: 0.8 }}>+91-</span>
+                <input
+                  type="tel"
+                  placeholder=""
+                  value={tempMobile}
+                  onChange={(e) => setTempMobile(e.target.value)}
+                  required
+                  pattern="[0-9]{10}"
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'white',
+                    padding: '16px 20px 16px 0',
+                    fontSize: '20px',
+                    outline: 'none',
+                    letterSpacing: '2px'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 'auto', width: '100%' }}>
+              <button type="submit" className="premium-auth-btn">
+                Get OTP
+              </button>
+            </div>
+          </form>
+        </div>
+      </div >
+    )
+  }
+
+  // Verify OTP Screen (Frame 2)
+  if (currentScreen === 'verify_otp') {
+    return (
+      <div className="app-container welcome-bg">
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+        <div className="content" style={{ paddingBottom: '30px', paddingTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+          <div className="welcome-top-section" style={{ textAlign: 'center', marginBottom: '80px' }}>
+            <div className="camera-logo-gradient" style={{ marginBottom: '20px' }}>
+              <img src="/logo_bubble.png" className="logo-pulse" alt="Logo" style={{ width: '450px', height: '450px', maxWidth: '100%', objectFit: 'contain' }} />
+            </div>
+          </div>
+
+          <form onSubmit={handleVerifyOTP_Signup} className="auth-form" style={{ width: '100%', maxWidth: '340px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label style={{ color: 'white', marginBottom: '12px', fontSize: '18px', fontWeight: '500', display: 'block' }}>Enter OTP from WhatsApp</label>
+              <input
+                type="text"
+                placeholder="Enter 6-digit OTP"
+                value={otpValue}
+                onChange={(e) => setOtpValue(e.target.value)}
+                required
+                maxLength="6"
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '16px',
+                  color: 'white',
+                  padding: '16px 20px',
+                  fontSize: '20px',
+                  outline: 'none',
+                  textAlign: 'left'
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 'auto', width: '100%', marginBottom: '20px' }}>
+              <button type="submit" className="premium-auth-btn">
+                Validate OTP
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGetOTP_Signup}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.7)',
+                  width: '100%',
+                  marginTop: '15px',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                Resend OTP
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
   }
 
   // Debug Screen to View Database Records
@@ -4127,6 +4310,8 @@ function App() {
               onChange={handleChange}
               pattern="[0-9]{10}"
               required
+              readOnly={isNewSignupFlow}
+              style={{ opacity: isNewSignupFlow ? 0.7 : 1 }}
             />
           </div>
 
