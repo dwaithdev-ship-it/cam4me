@@ -32,8 +32,13 @@ jobs:
           java -version
           echo "JAVA_HOME=$JAVA_HOME"
 
+      - name: Debug Android Environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -la $ANDROID_HOME || echo "SDK Directory not listed"
+
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build Web Assets
         run: npm run build
