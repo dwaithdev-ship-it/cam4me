@@ -1,0 +1,107 @@
+  // Menu Screen (Main Options)
+  if (currentScreen === 'menu') {
+    return (
+      <div className="app-container" style={{ background: '#0e1c2f' }}>
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+
+        <div className="common-header" style={{ background: 'transparent', borderBottom: 'none', justifyContent: 'space-between', padding: '10px 16px' }}>
+          <button onClick={() => setCurrentScreen('feed')} style={{ background: 'none', border: 'none', color: '#00F5FF', padding: 0 }}>
+             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+               <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+             </svg>
+          </button>
+          
+           <div style={{ textAlign: 'center' }}>
+             <img src="/logo_camera.png" alt="Logo" style={{ width: '30px' }} />
+           </div>
+
+          <button style={{ background: 'none', border: 'none', color: '#00F5FF', padding: 0 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="content" style={{ padding: '20px', alignItems: 'stretch' }}>
+          <h2 style={{ color: 'white', margin: '0 0 20px 0', fontSize: '20px', fontWeight: 'bold' }}>Menu</h2>
+
+          {/* Profile Section */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+             <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#4A90E2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '24px', overflow: 'hidden' }}>
+                {profileData.photo ? <img src={profileData.photo} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="Profile" /> : (profileData.name || 'U').charAt(0)}
+             </div>
+             <div style={{ flex: 1 }}>
+                <div style={{ color: '#00F5FF', fontSize: '16px', fontWeight: '600' }}>{selectedCity || profileData.name || 'User'}</div>
+                <button 
+                  onClick={() => setCurrentScreen('edit_profile')} 
+                  style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', padding: '0', fontSize: '14px', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  Edit Profile
+                </button>
+             </div>
+             <div style={{ color: 'white', fontSize: '24px' }}>⚙️</div>
+          </div>
+
+          {/* Menu Items */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+             {/* Change Location */}
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={() => setCurrentScreen('location')}>
+               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                 <span style={{ fontSize: '24px', color: '#00F5FF' }}>📍</span>
+                 <div style={{ textAlign: 'left' }}>
+                   <div style={{ color: '#00F5FF', fontSize: '16px' }}>Change your location</div>
+                   <div style={{ color: '#ff4d4d', fontSize: '13px' }}>{selectedCity || 'Select City'}</div>
+                 </div>
+               </div>
+               <span style={{ color: 'white', fontSize: '20px' }}>›</span>
+             </div>
+
+             <h3 style={{ color: 'white', margin: '20px 0 10px', fontSize: '16px', fontWeight: '600', textAlign: 'left' }}>About App</h3>
+
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                 <span style={{ fontSize: '22px', width: '24px', color: 'white' }}>ℹ️</span>
+                 <div style={{ color: 'white', fontSize: '16px' }}>About us</div>
+               </div>
+               <span style={{ color: 'white', fontSize: '20px' }}>›</span>
+             </div>
+
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                 <span style={{ fontSize: '22px', width: '24px', color: 'white' }}>🛡️</span>
+                 <div style={{ color: 'white', fontSize: '16px' }}>Privacy Policy</div>
+               </div>
+               <span style={{ color: 'white', fontSize: '20px' }}>›</span>
+             </div>
+
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                 <span style={{ fontSize: '22px', width: '24px', color: 'white' }}>💬</span>
+                 <div style={{ color: 'white', fontSize: '16px' }}>Feedback</div>
+               </div>
+               <span style={{ color: 'white', fontSize: '20px' }}>›</span>
+             </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                   <span style={{ fontSize: '22px', width: '24px', color: '#FFD700' }}>🔑</span>
+                   <div style={{ color: '#FFD700', fontSize: '16px' }}>Change Password</div>
+                 </div>
+                 <span style={{ color: 'white', fontSize: '20px' }}>›</span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={() => { auth.signOut(); saveSessionData('signin'); setCurrentScreen('signin'); }}>
+                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                   <span style={{ fontSize: '22px', width: '24px', color: '#ff4d4d' }}>➜</span>
+                   <div style={{ color: '#ff4d4d', fontSize: '16px' }}>Logout</div>
+                 </div>
+                 <span style={{ color: 'white', fontSize: '20px' }}>›</span>
+              </div>
+
+          </div>
+        </div>
+      </div>
+    )
+  }

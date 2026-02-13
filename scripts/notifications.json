@@ -1,0 +1,50 @@
+[
+  {
+    "id": "notif_1767855840892",
+    "title": "Test 2",
+    "message": "Notification test 2",
+    "scheduledDate": "2026-01-08",
+    "scheduledTime": "12:33",
+    "isScheduled": true,
+    "scheduleEnabled": true,
+    "status": "sent",
+    "createdAt": "2026-01-08T01:34:00.892Z",
+    "updatedAt": "2026-01-08T07:04:07.797Z"
+  },
+  {
+    "id": "notif_1767853589647",
+    "title": "Notification Test",
+    "message": "Im just testing the notification",
+    "scheduledDate": "2026-01-08",
+    "scheduledTime": "11:56",
+    "isScheduled": true,
+    "scheduleEnabled": true,
+    "status": "sent",
+    "createdAt": "2026-01-08T00:56:29.647Z",
+    "updatedAt": "2026-01-08T07:06:42.407Z"
+  },
+  {
+    "id": "notif_1767856040267",
+    "title": "Test 3",
+    "message": "Notification test 3 ",
+    "scheduledDate": "2026-01-08",
+    "scheduledTime": "12:37",
+    "isScheduled": true,
+    "scheduleEnabled": true,
+    "status": "sent",
+    "createdAt": "2026-01-08T01:37:20.267Z",
+    "updatedAt": "2026-01-08T07:07:25.463Z"
+  },
+  {
+    "id": "notif_1768111720510",
+    "title": "Test 4",
+    "message": "Notification test 4",
+    "scheduledDate": "2026-01-11",
+    "scheduledTime": "11:38",
+    "isScheduled": true,
+    "scheduleEnabled": true,
+    "status": "sent",
+    "createdAt": "2026-01-11T00:38:40.510Z",
+    "updatedAt": "2026-01-11T06:08:42.875Z"
+  }
+]

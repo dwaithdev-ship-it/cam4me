@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "891577361614",
+    "project_id": "cam4me-prod",
+    "storage_bucket": "cam4me-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891577361614:android:8467ce418179cfa307dc9f",
+        "android_client_info": {
+          "package_name": "Cam4me.andriod"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_vf-esa4TDjVGlp0YAg7ciS94Ug3DPzk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

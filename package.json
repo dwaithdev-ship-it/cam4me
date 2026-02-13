@@ -1,0 +1,54 @@
+{
+  "name": "cam4me",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "server": "node server.js",
+    "set-pass": "node scripts/set_user_password.cjs",
+    "share": "ssh -o StrictHostKeyChecking=no -R 80:localhost:5173 serveo.net"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "^7.0.2",
+    "@capacitor-firebase/authentication": "^8.0.1",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/geolocation": "^8.0.0",
+    "@capacitor/ios": "^8.0.2",
+    "@capacitor/preferences": "^8.0.0",
+    "@emailjs/browser": "^4.4.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "firebase": "^12.7.0",
+    "googleapis": "^171.4.0",
+    "imagekit": "^6.0.0",
+    "multer": "^2.0.2",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-loader-spinner": "^8.0.2"
+  },
+  "optionalDependencies": {
+    "sql.js": "^1.8.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "firebase-admin": "^11.11.1",
+    "globals": "^16.5.0",
+    "vite": "^7.2.4"
+  }
+}

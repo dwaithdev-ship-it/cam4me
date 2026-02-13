@@ -1,0 +1,102 @@
+/* Fix for City/Category button enlargement issue */
+.search-buttons {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+    align-items: flex-start !important;
+    /* Prevent stretching */
+}
+
+.search-btn-container {
+    flex: 1;
+    position: relative;
+    align-self: flex-start !important;
+    /* Each container maintains its own height */
+}
+
+.search-btn {
+    width: 100%;
+    min-height: 120px;
+    height: 120px !important;
+    /* Fixed height */
+    max-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #00F5FF 0%, #0099CC 100%);
+    border: none;
+    border-radius: 15px;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: visible;
+}
+
+.search-btn.category-btn {
+    background: linear-gradient(135deg, #FF00FF 0%, #CC00CC 100%);
+}
+
+.search-btn.expanded {
+    /* Don't change height when expanded */
+    height: 120px !important;
+}
+
+.dropdown-list {
+    position: absolute;
+    top: 130px;
+    /* Below the button */
+    left: 0;
+    right: 0;
+    background: rgba(30, 40, 60, 0.98);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dropdown-item {
+    padding: 15px 20px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.selected {
+    background: rgba(0, 245, 255, 0.2);
+    font-weight: 600;
+}
+
+.search-continue-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #00F5FF 0%, #0099CC 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+}
+
+.search-continue-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 245, 255, 0.4);
+}
