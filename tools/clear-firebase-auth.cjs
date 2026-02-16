@@ -16,7 +16,8 @@ const ALLOWED_EMAILS = [
   'dwaith.dev@gmail.com'
 ]
 
-const keyPath = './tools/serviceAccountKey.json'
+const path = require('path')
+const keyPath = path.join(__dirname, 'serviceAccountKey.json')
 if (!fs.existsSync(keyPath)) {
   console.error('Missing service account key. Place it at tools/serviceAccountKey.json')
   process.exit(1)

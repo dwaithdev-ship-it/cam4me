@@ -146,6 +146,61 @@ app.post('/api/master-data/categories', async (req, res) => {
     }
 });
 
+// 4. Device Management Endpoints
+
+// Check if device exists in database
+app.get('/api/device/:deviceId', async (req, res) => {
+    const { deviceId } = req.params;
+    try {
+        const result = await pool.query('SELECT user_id FROM users WHERE device_id = $1', [deviceId]);
+        if (result.rows.length > 0) {
+            res.json({ exists: true, userId: result.rows[0].user_id });
+        } else {
+            res.json({ exists: false });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Get user by device ID
+app.get('/api/user/by-device/:deviceId', async (req, res) => {
+    const { deviceId } = req.params;
+    try {
+        const result = await pool.query('SELECT * FROM users WHERE device_id = $1', [deviceId]);
+        if (result.rows.length > 0) {
+            res.json(result.rows[0]);
+        } else {
+            res.status(404).json({ error: 'User not found for this device' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Validate device access for a user (check if device matches)
+app.post('/api/user/validate-device', async (req, res) => {
+    const { userId, deviceId } = req.body;
+    try {
+        const result = await pool.query('SELECT device_id FROM users WHERE user_id = $1', [userId]);
+        if (result.rows.length > 0) {
+            const storedDeviceId = result.rows[0].device_id;
+            if (storedDeviceId === deviceId) {
+                res.json({ valid: true, message: 'Device matches' });
+            } else {
+                res.json({ valid: false, message: 'Your account is locked with another device, please use that device to login.' });
+            }
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // Connection Test and Startup
 (async () => {
     try {
@@ -154,8 +209,12 @@ app.post('/api/master-data/categories', async (req, res) => {
         console.log('[PostgreSQL] Database connection successful!');
         client.release();
     } catch (err) {
-        console.warn('[WARNING] Database connection failed! PostgreSQL features will not work.');
-        console.error('Error Details:', err.message);
+        console.warn('---------------------------------------------------------');
+        console.warn('[WARNING] Database connection failed!');
+        console.warn('The master-data server is running, but PostgreSQL features will not work.');
+        console.warn('Check if your PostgreSQL service is running on 127.0.0.1:5432.');
+        console.warn('Error Details:', err.message);
+        console.warn('---------------------------------------------------------');
     } finally {
         console.log('Registered Routes:');
         if (app.router && app.router.stack) {

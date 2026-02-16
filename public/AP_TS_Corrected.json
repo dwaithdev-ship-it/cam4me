@@ -1,0 +1,1860 @@
+{
+  "Andhra Pradesh": {
+    "Srikakulam": {
+      "Ichchapuram": [
+        "Ichchapuram",
+        "Kanchili",
+        "Kaviti",
+        "Sompeta"
+      ],
+      "Palasa": [
+        "Palasa",
+        "Mandasa",
+        "Vajrapukotturu"
+      ],
+      "Tekkali": [
+        "Tekkali",
+        "Kotabommali",
+        "Santhabommali",
+        "Nandigam"
+      ],
+      "Pathapatnam": [
+        "Pathapatnam",
+        "Meliaputti",
+        "L.N. Pet",
+        "Kothur",
+        "Hiramandalam"
+      ],
+      "Srikakulam": [
+        "Srikakulam",
+        "Gara"
+      ],
+      "Amadalavalasa": [
+        "Amadalavalasa",
+        "Ponduru",
+        "Sarubujjili",
+        "Burja"
+      ],
+      "Etcherla": [
+        "Etcherla",
+        "Laveru",
+        "Ranastalam",
+        "G. Sigadam"
+      ],
+      "Narasannapeta": [
+        "Narasannapeta",
+        "Jalumuru",
+        "Polaki",
+        "Saravakota"
+      ],
+      "Rajam": [
+        "Rajam",
+        "Vangara",
+        "Regidi Amadalavalasa",
+        "Santhakaviti"
+      ],
+      "Palakonda": [
+        "Palakonda",
+        "Seethampeta",
+        "Bhamini",
+        "Veeraghattam"
+      ]
+    },
+    "Vizianagaram": {
+      "Kurupam": [
+        "Kurupam",
+        "Gummalakshmipuram",
+        "Jiyyammavalasa",
+        "Komarada",
+        "Garugubilli"
+      ],
+      "Parvathipuram": [
+        "Parvathipuram",
+        "Seethanagaram",
+        "Balijipeta"
+      ],
+      "Salur": [
+        "Salur",
+        "Pachipenta",
+        "Mentada",
+        "Makkuva"
+      ],
+      "Bobbili": [
+        "Bobbili",
+        "Ramabhadrapuram",
+        "Badangi",
+        "Therlam"
+      ],
+      "Cheepurupalli": [
+        "Cheepurupalli",
+        "Merakamudidam",
+        "Garividi",
+        "Gurla"
+      ],
+      "Gajapathinagaram": [
+        "Gajapathinagaram",
+        "Bondapalli",
+        "Gantyada",
+        "Dattirajeru"
+      ],
+      "Nellimarla": [
+        "Nellimarla",
+        "Pusapatirega",
+        "Denkada",
+        "Bhogapuram"
+      ],
+      "Vizianagaram": [
+        "Vizianagaram"
+      ],
+      "Srungavarapukota": [
+        "Srungavarapukota",
+        "Lakkavarapukota",
+        "Kothavalasa",
+        "Vepada",
+        "Jami"
+      ]
+    },
+    "Visakhapatnam": {
+      "Bhimili": [
+        "Bheemunipatnam",
+        "Anandapuram",
+        "Padmanabham",
+        "Visakhapatnam Rural"
+      ],
+      "Visakhapatnam East": [
+        "Visakhapatnam Urban (Part)"
+      ],
+      "Visakhapatnam South": [
+        "Visakhapatnam Urban (Part)"
+      ],
+      "Visakhapatnam North": [
+        "Visakhapatnam Urban (Part)"
+      ],
+      "Visakhapatnam West": [
+        "Visakhapatnam Urban (Part)"
+      ],
+      "Gajuwaka": [
+        "Gajuwaka",
+        "Pedagantyada"
+      ]
+    },
+    "Anakapalli": {
+      "Chodavaram": [
+        "Chodavaram",
+        "Butchayyapeta",
+        "Rolugunta"
+      ],
+      "Madugula": [
+        "Madugula",
+        "Cheedikada",
+        "Devarapalle",
+        "K.Kotapadu"
+      ],
+      "Anakapalle": [
+        "Anakapalle",
+        "Kasimkota"
+      ],
+      "Pendurthi": [
+        "Pendurthi",
+        "Paravada",
+        "Sabbavaram"
+      ],
+      "Elamanchili": [
+        "Elamanchili",
+        "Rambilli",
+        "Munagapaka",
+        "Atchutapuram"
+      ],
+      "Payakaraopet": [
+        "Payakaraopeta",
+        "Nakkapalle",
+        "Kotauratla",
+        "S.Rayavaram"
+      ],
+      "Narsipatnam": [
+        "Narsipatnam",
+        "Golugonda",
+        "Makavarapalem",
+        "Nathavaram"
+      ]
+    },
+    "Alluri Sitharama Raju": {
+      "Araku Valley": [
+        "Araku Valley",
+        "Pedabayalu",
+        "Dumbriguda",
+        "Munchingiputtu",
+        "Hukumpeta",
+        "Ananthagiri"
+      ],
+      "Paderu": [
+        "Paderu",
+        "G.Madugula",
+        "Chintapalle",
+        "Gudem Kotha Veedhi",
+        "Koyyuru"
+      ],
+      "Rampachodavaram": [
+        "Rampachodavaram",
+        "Devipatnam",
+        "Y. Ramavaram",
+        "Addateegala",
+        "Gangavaram",
+        "Maredumilli",
+        "Rajavommangi"
+      ]
+    },
+    "Kakinada": {
+      "Tuni": [
+        "Tuni",
+        "Thondangi",
+        "Kotananduru"
+      ],
+      "Prathipadu": [
+        "Prathipadu",
+        "Sankhavaram",
+        "Yeleswaram",
+        "Rowthulapudi"
+      ],
+      "Pithapuram": [
+        "Pithapuram",
+        "U.Kothapalli",
+        "Gollaprolu"
+      ],
+      "Kakinada Rural": [
+        "Kakinada Rural",
+        "Karapa"
+      ],
+      "Peddapuram": [
+        "Peddapuram",
+        "Samalkota"
+      ],
+      "Kakinada City": [
+        "Kakinada Urban"
+      ],
+      "Jaggampeta": [
+        "Jaggampeta",
+        "Gandepalli",
+        "Kirlampudi"
+      ]
+    },
+    "East Godavari": {
+      "Anaparthy": [
+        "Anaparthy",
+        "Biccavolu",
+        "Rangampeta"
+      ],
+      "Rajanagaram": [
+        "Rajanagaram",
+        "Seethanagaram",
+        "Korukonda"
+      ],
+      "Rajahmundry City": [
+        "Rajahmundry Urban"
+      ],
+      "Rajahmundry Rural": [
+        "Rajahmundry Rural",
+        "Kadiam"
+      ],
+      "Kovvur": [
+        "Kovvur",
+        "Chagallu",
+        "Tallapudi"
+      ],
+      "Nidadavole": [
+        "Nidadavole",
+        "Undrajavaram",
+        "Peravali"
+      ],
+      "Gopalapuram": [
+        "Gopalapuram",
+        "Devarapalle",
+        "Nallajarla",
+        "Dwarakatirumala"
+      ]
+    },
+    "Dr. B.R. Ambedkar Konaseema": {
+      "Ramachandrapuram": [
+        "Ramachandrapuram",
+        "Kajuluru",
+        "Pamarru"
+      ],
+      "Mummidivaram": [
+        "Mummidivaram",
+        "I. Polavaram",
+        "Katrenikona",
+        "Thallarevu"
+      ],
+      "Amalapuram": [
+        "Amalapuram",
+        "Uppalaguptam",
+        "Allavaram"
+      ],
+      "Razole": [
+        "Razole",
+        "Malikipuram",
+        "Sakhinetipalli",
+        "Mamidikuduru"
+      ],
+      "Gannavaram": [
+        "P.Gannavaram",
+        "Ambajipeta",
+        "Ainavilli",
+        "Mukteswaram"
+      ],
+      "Kothapeta": [
+        "Kothapeta",
+        "Ravulapalem",
+        "Atreyapuram",
+        "Alamuru"
+      ],
+      "Mandapeta": [
+        "Mandapeta",
+        "Rayavaram",
+        "Kapileswarapuram"
+      ]
+    },
+    "West Godavari": {
+      "Achanta": [
+        "Achanta",
+        "Penugonda",
+        "Penumantra",
+        "Poduru"
+      ],
+      "Palakollu": [
+        "Palakollu",
+        "Yelamanchili",
+        "Poduru (Part)"
+      ],
+      "Narasapuram": [
+        "Narasapuram",
+        "Mogalthur"
+      ],
+      "Bhimavaram": [
+        "Bhimavaram",
+        "Veeravasaram"
+      ],
+      "Undi": [
+        "Undi",
+        "Kalla",
+        "Palacoderu",
+        "Akividu"
+      ],
+      "Tanuku": [
+        "Tanuku",
+        "Attili",
+        "Iragavaram"
+      ],
+      "Tadepalligudem": [
+        "Tadepalligudem",
+        "Pentapadu"
+      ]
+    },
+    "Eluru": {
+      "Unguturu": [
+        "Unguturu",
+        "Bhimadole",
+        "Nidamarru",
+        "Ganapavaram"
+      ],
+      "Denduluru": [
+        "Denduluru",
+        "Pedavegi",
+        "Pedapadu"
+      ],
+      "Eluru": [
+        "Eluru"
+      ],
+      "Polavaram": [
+        "Polavaram",
+        "Buttayagudem",
+        "Jeelugumilli",
+        "T. Narasapuram",
+        "Kukkunoor",
+        "Velerpadu"
+      ],
+      "Chintalapudi": [
+        "Chintalapudi",
+        "Lingapalem",
+        "Kamavarapukota",
+        "Jangareddigudem"
+      ],
+      "Nuzvid": [
+        "Nuzvid",
+        "Agiripalli",
+        "Chatrai",
+        "Musunuru"
+      ],
+      "Kaikalur": [
+        "Kaikalur",
+        "Mandavalli",
+        "Kalidindi",
+        "Mudinepalli"
+      ]
+    },
+    "NTR": {
+      "Tiruvuru": [
+        "Tiruvuru",
+        "Gampalagudem",
+        "Vissannapeta",
+        "A.Konduru"
+      ],
+      "Vijayawada West": [
+        "Vijayawada Urban (Part)"
+      ],
+      "Vijayawada Central": [
+        "Vijayawada Urban (Part)"
+      ],
+      "Vijayawada East": [
+        "Vijayawada Urban (Part)"
+      ],
+      "Mylavaram": [
+        "Mylavaram",
+        "G.Konduru",
+        "Reddigudem",
+        "Vijayawada Rural",
+        "Ibrahimpatnam"
+      ],
+      "Nandigama": [
+        "Nandigama",
+        "Kanchikacherla",
+        "Chandarlapadu",
+        "Veerullapadu"
+      ],
+      "Jaggayyapeta": [
+        "Jaggayyapeta",
+        "Vatsavai",
+        "Penuganchiprolu"
+      ]
+    },
+    "Krishna": {
+      "Gannavaram": [
+        "Gannavaram",
+        "Unguturu",
+        "Bapulapadu",
+        "Vijayawada Rural (Part)"
+      ],
+      "Gudivada": [
+        "Gudivada",
+        "Gudlavalleru",
+        "Nandivada"
+      ],
+      "Pedana": [
+        "Pedana",
+        "Guduru",
+        "Bantumilli",
+        "Kruthivennu"
+      ],
+      "Machilipatnam": [
+        "Machilipatnam"
+      ],
+      "Avanigadda": [
+        "Avanigadda",
+        "Nagayalanka",
+        "Koduru",
+        "Challapalli",
+        "Mopidevi",
+        "Ghantasala"
+      ],
+      "Pamarru": [
+        "Pamarru",
+        "Thotlavalluru",
+        "Pamidimukkala",
+        "Movva",
+        "Pedaparupudi"
+      ],
+      "Penamaluru": [
+        "Penamaluru",
+        "Kankipadu",
+        "Vuyyuru"
+      ]
+    },
+    "Guntur": {
+      "Tadikonda": [
+        "Tadikonda",
+        "Thullur",
+        "Phirangipuram",
+        "Medikonduru"
+      ],
+      "Mangalagiri": [
+        "Mangalagiri",
+        "Tadepalle",
+        "Duggirala"
+      ],
+      "Ponnuru": [
+        "Ponnuru",
+        "Chebrolu",
+        "Kakumanu"
+      ],
+      "Tenali": [
+        "Tenali",
+        "Kollipara"
+      ],
+      "Prathipadu": [
+        "Prathipadu",
+        "Vatticherukuru",
+        "Guvaragupalem",
+        "Pedanandipadu",
+        "Kakumanu"
+      ],
+      "Guntur West": [
+        "Guntur Urban (Part)"
+      ],
+      "Guntur East": [
+        "Guntur Urban (Part)"
+      ]
+    },
+    "Bapatla": {
+      "Vemuru": [
+        "Vemuru",
+        "Kolluru",
+        "Tsunduru",
+        "Bhattiprolu",
+        "Amruthalur"
+      ],
+      "Repalle": [
+        "Repalle",
+        "Nizampatnam",
+        "Nagaram",
+        "Cherukupalle"
+      ],
+      "Bapatla": [
+        "Bapatla",
+        "Pittalavanipalem",
+        "Karlapalem"
+      ],
+      "Parchur": [
+        "Parchur",
+        "Karamchedu",
+        "Inkollu",
+        "Chinaganjam",
+        "Martur",
+        "Yeddanapudi"
+      ],
+      "Addanki": [
+        "Addanki",
+        "J.Panguluru",
+        "Santhamaguluru",
+        "Ballikurava",
+        "Korisapadu"
+      ],
+      "Chirala": [
+        "Chirala",
+        "Vetapalem"
+      ]
+    },
+    "Palnadu": {
+      "Pedakurapadu": [
+        "Pedakurapadu",
+        "Bellamkonda",
+        "Atchampet",
+        "Krosuru",
+        "Amaravathi"
+      ],
+      "Chilakaluripet": [
+        "Chilakaluripet",
+        "Nadendla",
+        "Edlapadu"
+      ],
+      "Narasaraopet": [
+        "Narasaraopet",
+        "Rompicherla"
+      ],
+      "Sattenapalle": [
+        "Sattenapalle",
+        "Rajupalem",
+        "Nekarikallu",
+        "Muppalla"
+      ],
+      "Vinukonda": [
+        "Vinukonda",
+        "Nuzendla",
+        "Savalyapuram",
+        "Ipur",
+        "Bollapalle"
+      ],
+      "Gurajala": [
+        "Gurajala",
+        "Dachepalle",
+        "Piduguralla",
+        "Machavaram"
+      ],
+      "Macherla": [
+        "Macherla",
+        "Veldurthi",
+        "Durgi",
+        "Rentachintala",
+        "Karempudi"
+      ]
+    },
+    "Prakasam": {
+      "Yerragondapalem": [
+        "Yerragondapalem",
+        "Pullalacheruvu",
+        "Tripurantakam",
+        "Dornala",
+        "Peda Araveedu"
+      ],
+      "Darsi": [
+        "Darsi",
+        "Donakonda",
+        "Kurichedu",
+        "Mundlamuru",
+        "Thallur"
+      ],
+      "Santhanuthalapadu": [
+        "Santhanuthalapadu",
+        "Maddipadu",
+        "Chimakurthy",
+        "Naguluppalapadu"
+      ],
+      "Ongole": [
+        "Ongole",
+        "Kothapatnam"
+      ],
+      "Kondapi": [
+        "Kondapi",
+        "Singarayakonda",
+        "Tangutur",
+        "Jarugumalli",
+        "Ponnaluru",
+        "Marripudi"
+      ],
+      "Markapuram": [
+        "Markapuram",
+        "Konakanamitla",
+        "Tarlupadu"
+      ],
+      "Giddalur": [
+        "Giddalur",
+        "Bestavaripeta",
+        "Racherla",
+        "Komarolu",
+        "Cumbum",
+        "Ardhaveedu"
+      ],
+      "Kanigiri": [
+        "Kanigiri",
+        "Hanumanthunipadu",
+        "Veligandla",
+        "Pedacherlopalle",
+        "Chandrasekharapuram",
+        "Pamur"
+      ]
+    },
+    "Sri Potti Sriramulu Nellore": {
+      "Kandukur": [
+        "Kandukur",
+        "Lingasamudram",
+        "Gudluru",
+        "Ulavapadu",
+        "Voletivaripalem"
+      ],
+      "Kavali": [
+        "Kavali",
+        "Bogole",
+        "Allur",
+        "Dagadarthi"
+      ],
+      "Atmakur": [
+        "Atmakur",
+        "Chejerla",
+        "Ananthasagaram",
+        "Anamasamudramu",
+        "Sangam",
+        "Marripadu"
+      ],
+      "Kovuru": [
+        "Kovuru",
+        "Buchireddypalem",
+        "Indukurpet",
+        "Kodavalur",
+        "Vidavalur"
+      ],
+      "Nellore City": [
+        "Nellore Urban (Part)"
+      ],
+      "Nellore Rural": [
+        "Nellore Rural",
+        "Nellore Urban (Part)"
+      ],
+      "Sarvepalli": [
+        "Podalakur",
+        "Thotapalligudur",
+        "Muthukur",
+        "Venkatachalam",
+        "Manubolu"
+      ],
+      "Udayagiri": [
+        "Udayagiri",
+        "Varikuntapadu",
+        "Vinjamur",
+        "Duttalur",
+        "Sitarampuram",
+        "Kaligiri",
+        "Kondapuram",
+        "Jaladanki"
+      ]
+    },
+    "Tirupati": {
+      "Gudur": [
+        "Gudur",
+        "Chillakur",
+        "Kota",
+        "Vakadu",
+        "Chittamur"
+      ],
+      "Sullurpeta": [
+        "Sullurpeta",
+        "Doravarisatram",
+        "Tada",
+        "Naidupeta",
+        "Pellakur",
+        "Ozili"
+      ],
+      "Venkatagiri": [
+        "Venkatagiri",
+        "Balayapalle",
+        "Dakkili",
+        "Rapur",
+        "Sydapuram",
+        "Kaluvoya"
+      ],
+      "Chandragiri": [
+        "Chandragiri",
+        "Pakala",
+        "Ramachandrapuram",
+        "Chinnagottigallu",
+        "Yerravaripalem",
+        "Tirupati Rural (Part)"
+      ],
+      "Tirupati": [
+        "Tirupati Urban"
+      ],
+      "Srikalahasti": [
+        "Srikalahasti",
+        "Thottambedu",
+        "Renigunta",
+        "Yerpedu"
+      ],
+      "Sathyavedu": [
+        "Sathyavedu",
+        "Varadaiahpalem",
+        "K.V.B.Puram",
+        "Pichatur",
+        "Nagalapuram",
+        "Nindra",
+        "Vijayapuram"
+      ]
+    },
+    "YSR Kadapa": {
+      "Badvel": [
+        "Badvel",
+        "Kalasapadu",
+        "B.Kodur",
+        "Sri Avadhutha Kasinayana",
+        "Porumamilla",
+        "Gopavaram",
+        "Atlur"
+      ],
+      "Kadapa": [
+        "Kadapa"
+      ],
+      "Pulivendla": [
+        "Pulivendla",
+        "Simhadripuram",
+        "Lingala",
+        "Thondur",
+        "Vempalli",
+        "Chakrayapeta",
+        "Vemula"
+      ],
+      "Kamalapuram": [
+        "Kamalapuram",
+        "Vallur",
+        "Chennur",
+        "Chintakommadinne",
+        "Pendlimarri",
+        "Veerapunayunipalle"
+      ],
+      "Jammalamadugu": [
+        "Jammalamadugu",
+        "Mylavaram",
+        "Muddanur",
+        "Kondapuram",
+        "Peddamudium",
+        "Yerraguntla"
+      ],
+      "Proddatur": [
+        "Proddatur",
+        "Raju Palem"
+      ],
+      "Mydukur": [
+        "Mydukur",
+        "Duvvur",
+        "S.Mydukur",
+        "Brahmamgarimattam",
+        "Khajipet",
+        "Chapad"
+      ]
+    },
+    "Annamayya": {
+      "Rajampet": [
+        "Rajampet",
+        "Nandalur",
+        "Veeraballe",
+        "Vontimitta",
+        "Siddavatam",
+        "T.Sundupalle"
+      ],
+      "Kodur": [
+        "Kodur",
+        "Obulavaripalle",
+        "Chitvel",
+        "Pullampeta",
+        "Penagaluru"
+      ],
+      "Rayachoti": [
+        "Rayachoti",
+        "Sambepalli",
+        "Chinnamandem",
+        "Galiveedu",
+        "Lakkireddipalli",
+        "Ramapuram"
+      ],
+      "Thamballapalle": [
+        "Thamballapalle",
+        "Mulakalacheruvu",
+        "Peddamandyam",
+        "Kurabalakota",
+        "Peddathippasamudram",
+        "B.Kothakota"
+      ],
+      "Pileru": [
+        "Pileru",
+        "Gurramkonda",
+        "Kalakada",
+        "K.V. Palle",
+        "Valmikipuram",
+        "Chinthaparthi"
+      ],
+      "Madanapalle": [
+        "Madanapalle",
+        "Nimmanapalle",
+        "Ramasamudram"
+      ]
+    },
+    "Nandyal": {
+      "Allagadda": [
+        "Allagadda",
+        "Dornipadu",
+        "Uyyalawada",
+        "Chagalamarri",
+        "Rudravaram",
+        "Sirivella"
+      ],
+      "Srisailam": [
+        "Srisailam",
+        "Atmakur",
+        "Velgode",
+        "Bandi Atmakur",
+        "Mahanandi"
+      ],
+      "Nandikotkur": [
+        "Nandikotkur",
+        "Pagidyala",
+        "Jupadu Bungalow",
+        "Kothapalle",
+        "Pamulapadu",
+        "Midthur"
+      ],
+      "Panyam": [
+        "Panyam",
+        "Gadivemula",
+        "Kallur",
+        "Orvakal"
+      ],
+      "Nandyal": [
+        "Nandyal",
+        "Gospadu"
+      ],
+      "Banaganapalle": [
+        "Banaganapalle",
+        "Owk",
+        "Koilakuntla",
+        "Sanjamala",
+        "Kolimigundla"
+      ],
+      "Dhone": [
+        "Dhone",
+        "Bethamcherla",
+        "Peapully"
+      ]
+    },
+    "Kurnool": {
+      "Kurnool": [
+        "Kurnool Urban"
+      ],
+      "Pattikonda": [
+        "Pattikonda",
+        "Maddikera",
+        "Tuggali",
+        "Veldurthi",
+        "Krishnagiri"
+      ],
+      "Kodumur": [
+        "Kodumur",
+        "C.Belagal",
+        "Gudur",
+        "Kurnool Rural (Part)"
+      ],
+      "Yemmiganur": [
+        "Yemmiganur",
+        "Nandavaram",
+        "Gonegandla"
+      ],
+      "Mantralayam": [
+        "Mantralayam",
+        "Kosigi",
+        "Kowthalam",
+        "Peddakadubur"
+      ],
+      "Adoni": [
+        "Adoni"
+      ],
+      "Alur": [
+        "Alur",
+        "Aspari",
+        "Devanakonda",
+        "Chippagiri",
+        "Halaharvi",
+        "Holagunda"
+      ]
+    },
+    "Ananthapuramu": {
+      "Rayadurg": [
+        "Rayadurg",
+        "D.Hirehal",
+        "Kanekal",
+        "Bommanahal",
+        "Gummaghatta"
+      ],
+      "Uravakonda": [
+        "Uravakonda",
+        "Beluguppa",
+        "Kudair",
+        "Vajrakarur",
+        "Vidapanakal"
+      ],
+      "Guntakal": [
+        "Guntakal",
+        "Gooty",
+        "Pamidi"
+      ],
+      "Tadipatri": [
+        "Tadipatri",
+        "Peddavadugur",
+        "Yadiki",
+        "Peddapappur"
+      ],
+      "Singanamala": [
+        "Singanamala",
+        "Garladinne",
+        "Putlur",
+        "Yellanur",
+        "Narpala",
+        "Bukkarayasamudram"
+      ],
+      "Anantapur Urban": [
+        "Anantapur"
+      ],
+      "Kalyandurg": [
+        "Kalyandurg",
+        "Brahmasamudram",
+        "Settur",
+        "Kundurpi",
+        "Kambadur"
+      ],
+      "Raptadu": [
+        "Raptadu",
+        "Atmakur",
+        "Kanaganapalle",
+        "C.K. Palle",
+        "Ramagiri"
+      ]
+    },
+    "Sri Sathya Sai": {
+      "Madakasira": [
+        "Madakasira",
+        "Amarapuram",
+        "Gudibanda",
+        "Rolla",
+        "Agali"
+      ],
+      "Hindupur": [
+        "Hindupur",
+        "Lepakshi",
+        "Chilamathur"
+      ],
+      "Penukonda": [
+        "Penukonda",
+        "Roddam",
+        "Somandepalle",
+        "Gorantla",
+        "Parigi"
+      ],
+      "Puttaparthi": [
+        "Puttaparthi",
+        "Nallamada",
+        "Bukkapatnam",
+        "Kothacheruvu",
+        "O.D.Cheruvu",
+        "Amadagur"
+      ],
+      "Dharmavaram": [
+        "Dharmavaram",
+        "Bathalapalle",
+        "Tadimarri",
+        "Mudigubba"
+      ],
+      "Kadiri": [
+        "Kadiri",
+        "Talupula",
+        "Nambulipulikunta",
+        "Gandlapenta",
+        "Nallacheruvu",
+        "Tanakal",
+        "Talupula"
+      ]
+    },
+    "Chittoor": {
+      "Punganur": [
+        "Punganur",
+        "Chowdepalle",
+        "Sodam",
+        "Somala",
+        "Peddapanjani",
+        "Pulicherla",
+        "Rompcicherla"
+      ],
+      "Nagari": [
+        "Nagari",
+        "Nindra",
+        "Vijayapuram",
+        "Puttur",
+        "Vadamalapeta"
+      ],
+      "Gangadhara Nellore": [
+        "Gangadhara Nellore",
+        "Penumuru",
+        "Vedurukuppam",
+        "Karvetinagar",
+        "S.R.Puram",
+        "Palasamudram"
+      ],
+      "Chittoor": [
+        "Chittoor",
+        "Gudipala"
+      ],
+      "Puthalapattu": [
+        "Puthalapattu",
+        "Irala",
+        "Thavanampalle",
+        "Bangarupalem",
+        "Yadamari"
+      ],
+      "Palamaner": [
+        "Palamaner",
+        "Gangavaram",
+        "Baireddipalle",
+        "V.Kota",
+        "Peddapanjani"
+      ],
+      "Kuppam": [
+        "Kuppam",
+        "Shanthipuram",
+        "Gudupalle",
+        "Ramakuppam"
+      ]
+    }
+  },
+  "Telangana": {
+    "Adilabad": {
+      "Sirpur": [
+        "Sirpur (T)",
+        "Kouthala",
+        "Bejjur",
+        "Dahegaon",
+        "Penchikalpet",
+        "Chintalamanepally",
+        "Kagaznagar"
+      ],
+      "Chennur": [
+        "Chennur",
+        "Kotapally",
+        "Jaipur",
+        "Mandamarri",
+        "Bheemaram"
+      ],
+      "Bellampalli": [
+        "Bellampalli",
+        "Vemanpally",
+        "Nennel",
+        "Kasipet",
+        "Bhimini",
+        "Kannepally",
+        "Tandur"
+      ],
+      "Mancherial": [
+        "Mancherial",
+        "Naspur",
+        "Hajipur",
+        "Luxettipet",
+        "Dandepally"
+      ],
+      "Asifabad": [
+        "Asifabad",
+        "Jainoor",
+        "Tiryani",
+        "Kerameri",
+        "Wankdi",
+        "Rebbena",
+        "Sirpur (U)",
+        "Lingapur"
+      ],
+      "Adilabad": [
+        "Adilabad",
+        "Jainad",
+        "Bela",
+        "Mavala"
+      ],
+      "Boath": [
+        "Boath",
+        "Bazarhathnoor",
+        "Neradigonda",
+        "Ichoda",
+        "Gudihathnoor",
+        "Talamadugu",
+        "Tamsi"
+      ],
+      "Nirmal": [
+        "Nirmal",
+        "Dilawarpur",
+        "Laxmanchanda",
+        "Mamda",
+        "Sarangapur",
+        "Narsapur (G)",
+        "Soan"
+      ],
+      "Mudhole": [
+        "Mudhole",
+        "Bhainsa",
+        "Kubeer",
+        "Tanur",
+        "Lokeshwaram",
+        "Basar"
+      ],
+      "Khanapur": [
+        "Khanapur",
+        "Kaddam",
+        "Dasturabad",
+        "Jannaram",
+        "Pembi"
+      ]
+    },
+    "Nizamabad": {
+      "Armur": [
+        "Armur",
+        "Nandipet",
+        "Makloor",
+        "Mupkal",
+        "Alur",
+        "Donkeshwar"
+      ],
+      "Bodhan": [
+        "Bodhan",
+        "Ranjal",
+        "Navipet",
+        "Yedapally",
+        "Saloora"
+      ],
+      "Jukkal": [
+        "Jukkal",
+        "Madnoor",
+        "Bichkunda",
+        "Pitlam",
+        "Nizamsagar",
+        "Pedda Kodapgal",
+        "Dongli"
+      ],
+      "Banswada": [
+        "Banswada",
+        "Birkoor",
+        "Varni",
+        "Nasrullabad",
+        "Rudrur",
+        "Chandur",
+        "Mosra",
+        "Kotagiri",
+        "Pothangal"
+      ],
+      "Yellareddy": [
+        "Yellareddy",
+        "Nagareddypet",
+        "Lingampet",
+        "Tadwai",
+        "Gandhari",
+        "Ramareddy",
+        "Rajampet"
+      ],
+      "Kamareddy": [
+        "Kamareddy",
+        "Machareddy",
+        "Domakonda",
+        "Bhiknoor",
+        "Bibipet",
+        "Rajampet"
+      ],
+      "Nizamabad Urban": [
+        "Nizamabad North",
+        "Nizamabad South"
+      ],
+      "Nizamabad Rural": [
+        "Nizamabad Rural",
+        "Jakranpally",
+        "Sirkonda",
+        "Dharpally",
+        "Indalwai",
+        "Mopal",
+        "Ditchpally"
+      ],
+      "Balkonda": [
+        "Balkonda",
+        "Morthad",
+        "Kammarpally",
+        "Velpur",
+        "Yergatla",
+        "Bheemgal",
+        "Mupkal",
+        "Mendora"
+      ]
+    },
+    "Karimnagar": {
+      "Koratla": [
+        "Koratla",
+        "Metpally",
+        "Ibrahimpatnam",
+        "Mallapur"
+      ],
+      "Jagtial": [
+        "Jagtial",
+        "Raikal",
+        "Sarangapur",
+        "Beerpur",
+        "Jagtial Rural"
+      ],
+      "Dharmapuri": [
+        "Dharmapuri",
+        "Gollapally",
+        "Velgatoor",
+        "Pegadapally",
+        "Buggaram"
+      ],
+      "Ramagundam": [
+        "Ramagundam",
+        "Anthargaon",
+        "Palakurthy"
+      ],
+      "Manthani": [
+        "Manthani",
+        "Kamanpur",
+        "Kataram",
+        "Mahadevpur",
+        "Mutharam",
+        "Malharrao",
+        "Mutharam (Manthani)",
+        "Palimela"
+      ],
+      "Peddapalle": [
+        "Peddapalle",
+        "Julapalle",
+        "Elimedu",
+        "Sultanabad",
+        "Odela",
+        "Kalva Srirampur"
+      ],
+      "Karimnagar": [
+        "Karimnagar",
+        "Kothapally",
+        "Karimnagar Rural"
+      ],
+      "Choppadandi": [
+        "Choppadandi",
+        "Gangadhara",
+        "Ramadugu",
+        "Mallial",
+        "Kodimial",
+        "Boinpalle"
+      ],
+      "Vemulawada": [
+        "Vemulawada",
+        "Konaraopeta",
+        "Chandurthi",
+        "Medipalli",
+        "Rudrangi",
+        "Vemulawada Rural"
+      ],
+      "Sircilla": [
+        "Sircilla",
+        "Thangallapalli",
+        "Mustabad",
+        "Yellareddypeta",
+        "Gambhiraopet",
+        "Veernapalli"
+      ],
+      "Manakondur": [
+        "Manakondur",
+        "Ellanthakunta",
+        "Bejjanki",
+        "Timmapur",
+        "Shankarapatnam",
+        "Ganneruvaram"
+      ],
+      "Huzurabad": [
+        "Huzurabad",
+        "Kamalapur",
+        "Veenavanka",
+        "Jammikunta",
+        "Illanthakunta"
+      ],
+      "Husnabad": [
+        "Husnabad",
+        "Chigurumamidi",
+        "Koheda",
+        "Saidapur",
+        "Bheemadevarpalle",
+        "Elkathurthi",
+        "Akkannapet"
+      ]
+    },
+    "Medak": {
+      "Siddipet": [
+        "Siddipet Urban",
+        "Siddipet Rural",
+        "Chinnakodur",
+        "Nangnoor"
+      ],
+      "Medak": [
+        "Medak",
+        "Papannapet",
+        "Ramayampet",
+        "Shankarampet Small",
+        "Nizampet"
+      ],
+      "Narayankhed": [
+        "Narayankhed",
+        "Kangti",
+        "Manoor",
+        "Kalher",
+        "Sirgapoor",
+        "Nagalgidda"
+      ],
+      "Andole": [
+        "Andole",
+        "Alladurg",
+        "Regode",
+        "Tekmal",
+        "Raikode",
+        "Munipally",
+        "Pulkal",
+        "Vatpally"
+      ],
+      "Narsapur": [
+        "Narsapur",
+        "Kulcharam",
+        "Yeldurthy",
+        "Shivampet",
+        "Kowdipally",
+        "Chilipched"
+      ],
+      "Patancheru": [
+        "Patancheru",
+        "Ameenpur",
+        "Jinnaram",
+        "Gummadidala",
+        "Ramachandrapuram"
+      ],
+      "Sangareddy": [
+        "Sangareddy",
+        "Kondapur",
+        "Sadasivpet",
+        "Kandi"
+      ],
+      "Gajwel": [
+        "Gajwel",
+        "Toopran",
+        "Kondapak",
+        "Wargal",
+        "Mulug",
+        "Jagdevpur",
+        "Markook"
+      ],
+      "Dubbak": [
+        "Dubbak",
+        "Mirdoddi",
+        "Doultabad",
+        "Chegunta",
+        "Thoguta",
+        "Rayapole"
+      ]
+    },
+    "Ranga Reddy": {
+      "Quthbullapur": [
+        "Quthbullapur",
+        "Nizampet",
+        "Gajularamaram"
+      ],
+      "Malkajgiri": [
+        "Malkajgiri",
+        "Alwal"
+      ],
+      "Uppal": [
+        "Uppal",
+        "Kapra"
+      ],
+      "L.B. Nagar": [
+        "L.B. Nagar",
+        "Saroornagar"
+      ],
+      "Maheswaram": [
+        "Maheswaram",
+        "Kandukur",
+        "Tukkuguda"
+      ],
+      "Rajendranagar": [
+        "Rajendranagar",
+        "Gandipet",
+        "Shamshabad"
+      ],
+      "Serilingampally": [
+        "Serilingampally"
+      ],
+      "Chevella": [
+        "Chevella",
+        "Moinabad",
+        "Shabad",
+        "Shankarpalle",
+        "Nawabpet"
+      ],
+      "Pargi": [
+        "Pargi",
+        "Doma",
+        "Kulkacherla",
+        "Pudur",
+        "Chowdapur"
+      ],
+      "Vikarabad": [
+        "Vikarabad",
+        "Marpalle",
+        "Mominpet",
+        "Dharur",
+        "Bantwaram",
+        "Kotepally"
+      ],
+      "Tandur": [
+        "Tandur",
+        "Peddemul",
+        "Basheerabad",
+        "Yalal"
+      ],
+      "Ibrahimpatnam": [
+        "Ibrahimpatnam",
+        "Manchal",
+        "Yacharam",
+        "Abdullapurmet"
+      ]
+    },
+    "Hyderabad": {
+      "Musheerabad": [
+        "Musheerabad"
+      ],
+      "Malakpet": [
+        "Malakpet"
+      ],
+      "Amberpet": [
+        "Amberpet"
+      ],
+      "Khairatabad": [
+        "Khairatabad"
+      ],
+      "Jubilee Hills": [
+        "Jubilee Hills",
+        "Shaikpet"
+      ],
+      "Sanathnagar": [
+        "Sanathnagar",
+        "Ameerpet"
+      ],
+      "Nampally": [
+        "Nampally"
+      ],
+      "Secunderabad": [
+        "Secunderabad"
+      ],
+      "Secunderabad Cantonment": [
+        "Marredpally",
+        "Trimulgherry"
+      ],
+      "Karwan": [
+        "Karwan"
+      ],
+      "Goshamahal": [
+        "Goshamahal"
+      ],
+      "Charminar": [
+        "Charminar"
+      ],
+      "Chandrayangutta": [
+        "Chandrayangutta",
+        "Bandlaguda"
+      ],
+      "Yakutpura": [
+        "Yakutpura",
+        "Santoshnagar",
+        "Rain Bazar"
+      ],
+      "Bahadurpura": [
+        "Bahadurpura"
+      ]
+    },
+    "Mahabubnagar": {
+      "Kodangal": [
+        "Kodangal",
+        "Bomraspet",
+        "Doulthabad",
+        "Kosgi",
+        "Maddur"
+      ],
+      "Narayanpet": [
+        "Narayanpet",
+        "Damaragidda",
+        "Dhanwada",
+        "Utkoor",
+        "Krishna",
+        "Marikal"
+      ],
+      "Mahbubnagar": [
+        "Mahbubnagar Urban",
+        "Mahbubnagar Rural",
+        "Hanwada"
+      ],
+      "Jadcherla": [
+        "Jadcherla",
+        "Nawabpet",
+        "Balanagar",
+        "Midjil"
+      ],
+      "Devarkadra": [
+        "Devarkadra",
+        "Addakal",
+        "Bhootpur",
+        "Chinnachintakunta",
+        "Kothakota",
+        "Madanapur",
+        "Musapet"
+      ],
+      "Makthal": [
+        "Makthal",
+        "Maganoor",
+        "Atmakur",
+        "Narva",
+        "Utkoor",
+        "Krishna"
+      ],
+      "Wanaparthy": [
+        "Wanaparthy",
+        "Pebbair",
+        "Gopalpeta",
+        "Peddamandadi",
+        "Ghanpur",
+        "Revally"
+      ],
+      "Gadwal": [
+        "Gadwal",
+        "Maldakal",
+        "Ghattu",
+        "Dharur",
+        "K.T. Doddi"
+      ],
+      "Alampur": [
+        "Alampur",
+        "Ieeja",
+        "Itikyal",
+        "Waddepalle",
+        "Manopad",
+        "Rajoli"
+      ],
+      "Nagarkurnool": [
+        "Nagarkurnool",
+        "Bijinapally",
+        "Tadoor",
+        "Telkapally",
+        "Thimmajipet"
+      ],
+      "Achampet": [
+        "Achampet",
+        "Uppununthala",
+        "Amrabad",
+        "Balmoor",
+        "Lingal",
+        "Vangoor"
+      ],
+      "Kalwakurthy": [
+        "Kalwakurthy",
+        "Veldanda",
+        "Talakondapalle",
+        "Amangal",
+        "Madgul",
+        "Charakonda"
+      ],
+      "Shadnagar": [
+        "Shadnagar",
+        "Farooqnagar",
+        "Kothur",
+        "Keshampet",
+        "Kondurg",
+        "Chaudderpally"
+      ],
+      "Kollapur": [
+        "Kollapur",
+        "Kodair",
+        "Pangal",
+        "Veepangandla"
+      ]
+    },
+    "Nalgonda": {
+      "Devarakonda": [
+        "Devarakonda",
+        "Chintapalle",
+        "Gundlapalle",
+        "Chandampet",
+        "Konda Mallepally"
+      ],
+      "Nagarjuna Sagar": [
+        "Nidamanur",
+        "Gurrampode",
+        "Peddavoora",
+        "Anumula",
+        "Tripuraram",
+        "Thirumalagiri Sagar"
+      ],
+      "Miryalaguda": [
+        "Miryalaguda",
+        "Vemulapally",
+        "Dameracherla"
+      ],
+      "Huzurnagar": [
+        "Huzurnagar",
+        "Mattampally",
+        "Mellachervu",
+        "Garidepally",
+        "Chintalapalem"
+      ],
+      "Kodad": [
+        "Kodad",
+        "Mothey",
+        "Nadikuda",
+        "Munagala",
+        "Chilkur"
+      ],
+      "Suryapet": [
+        "Suryapet",
+        "Chivvemla",
+        "Penpahad",
+        "Atmakur (S)"
+      ],
+      "Nalgonda": [
+        "Nalgonda",
+        "Thipparthy",
+        "Kanagal",
+        "Madugulapally"
+      ],
+      "Munugode": [
+        "Munugode",
+        "Chandur",
+        "Marriguda",
+        "Nampally",
+        "Narayanapur",
+        "Choutuppal"
+      ],
+      "Bhongir": [
+        "Bhongir",
+        "Bibinagar",
+        "Bhoodan Pochampally",
+        "Valigonda"
+      ],
+      "Nakrekal": [
+        "Nakrekal",
+        "Kethepally",
+        "Kattangur",
+        "Chityal",
+        "Ramannapeta",
+        "Narketpally"
+      ],
+      "Thungathurthy": [
+        "Thungathurthy",
+        "Thirumalagiri",
+        "Nuthankal",
+        "Jajireddigudem",
+        "Sali Gouraram",
+        "Mothkur",
+        "Addagudur",
+        "Maddirala"
+      ]
+    },
+    "Warangal": {
+      "Palakurthi": [
+        "Palakurthi",
+        "Devaruppula",
+        "Kodakandla",
+        "Raiparthy",
+        "Thorrrur"
+      ],
+      "Ghanpur (Station)": [
+        "Ghanpur (Station)",
+        "Dharmasagar",
+        "Raghunathpalle",
+        "Zaffergadh",
+        "Lingala Ghanpur"
+      ],
+      "Jangaon": [
+        "Jangaon",
+        "Cherial",
+        "Bachannapet",
+        "Narmetta",
+        "Maddur"
+      ],
+      "Wardhannapet": [
+        "Wardhannapet",
+        "Hanamkonda",
+        "Parvathagiri",
+        "Hasanparthy"
+      ],
+      "Bhupalpalle": [
+        "Bhupalpalle",
+        "Ghanpur (Mulug)",
+        "Regonda",
+        "Mogullapalle",
+        "Chityal"
+      ],
+      "Mulug": [
+        "Mulug",
+        "Venkatapur",
+        "Govindaraopet",
+        "Tadvai",
+        "Eturnagaram",
+        "Mangapet",
+        "S.S. Tadwai"
+      ],
+      "Dornakal": [
+        "Dornakal",
+        "Kuravi",
+        "Maripeda",
+        "Narsimhulapet"
+      ],
+      "Mahabubabad": [
+        "Mahabubabad",
+        "Kesamudram",
+        "Nellikudur",
+        "Gudur"
+      ],
+      "Narsampet": [
+        "Narsampet",
+        "Chennaraopet",
+        "Duggondi",
+        "Nekkonda",
+        "Khanapur",
+        "Nallabelly"
+      ],
+      "Parkal": [
+        "Parkal",
+        "Atmakur",
+        "Sangam",
+        "Geesugonda",
+        "Nadikuda"
+      ],
+      "Warangal West": [
+        "Warangal (Part)",
+        "Hanamkonda (Part)"
+      ],
+      "Warangal East": [
+        "Warangal (Part)"
+      ]
+    },
+    "Khammam": {
+      "Kothagudem": [
+        "Kothagudem",
+        "Palwancha",
+        "Sujatanagar",
+        "Chunchupally"
+      ],
+      "Aswaraopeta": [
+        "Aswaraopeta",
+        "Dammapeta",
+        "Mulakalapalle",
+        "Chandrugonda"
+      ],
+      "Bhadrachalam": [
+        "Bhadrachalam",
+        "Wazeed",
+        "Venkatapuram",
+        "Cherla",
+        "Dummugudem"
+      ],
+      "Khammam": [
+        "Khammam Urban",
+        "Khammam Rural"
+      ],
+      "Palair": [
+        "Khammam Rural (Part)",
+        "Kusumanchi",
+        "Thirumalayapalem",
+        "Nelakondapalle"
+      ],
+      "Madhira": [
+        "Madhira",
+        "Bonakal",
+        "Chintakani",
+        "Mudigonda",
+        "Yerrupalem"
+      ],
+      "Wyra": [
+        "Wyra",
+        "Enkoor",
+        "Konijerla",
+        "Singareni",
+        "Julurpad"
+      ],
+      "Sathupalli": [
+        "Sathupalli",
+        "Penuballi",
+        "Kallur",
+        "Thallada",
+        "Vemsoor"
+      ],
+      "Yellandu": [
+        "Yellandu",
+        "Kamepalle",
+        "Bayyaram",
+        "Tekulapalle"
+      ],
+      "Pinapaka": [
+        "Pinapaka",
+        "Manuguru",
+        "Gundala",
+        "Burgampahad",
+        "Aswapuram"
+      ]
+    }
+  }
+}

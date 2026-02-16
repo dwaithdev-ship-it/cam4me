@@ -54,12 +54,69 @@ class DatabaseService {
       if (!snapshot.exists()) return [];
       const users = [];
       snapshot.forEach((child) => {
-        users.push(child.val());
+        const val = child.val();
+        if (val && typeof val === 'object') {
+          users.push({ ...val, uid: child.key });
+        }
       });
       return users.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
     } catch (err) {
       console.error('Error getting all users:', err);
       return [];
+    }
+  }
+
+  // --- DEVICE MANAGEMENT METHODS ---
+  async checkDeviceExists(deviceId) {
+    if (!deviceId) return { exists: false };
+    try {
+      const usersRef = ref(rtDb, 'users');
+      const snapshot = await get(usersRef);
+      if (!snapshot.exists()) return { exists: false };
+
+      let foundUser = null;
+      snapshot.forEach((child) => {
+        const userData = child.val();
+        if (userData.deviceId === deviceId) {
+          foundUser = { uid: child.key, ...userData };
+        }
+      });
+
+      return foundUser ? { exists: true, user: foundUser } : { exists: false };
+    } catch (err) {
+      console.error('Error checking device:', err);
+      return { exists: false };
+    }
+  }
+
+  async getUserByDeviceId(deviceId) {
+    if (!deviceId) return null;
+    try {
+      const result = await this.checkDeviceExists(deviceId);
+      return result.exists ? result.user : null;
+    } catch (err) {
+      console.error('Error getting user by device:', err);
+      return null;
+    }
+  }
+
+  async validateUserDevice(userId, deviceId) {
+    if (!userId || !deviceId) return { valid: false, message: 'Invalid parameters' };
+    try {
+      const user = await this.getUser(userId);
+      if (!user) return { valid: false, message: 'User not found' };
+
+      if (user.deviceId === deviceId) {
+        return { valid: true, message: 'Device matches' };
+      } else {
+        return {
+          valid: false,
+          message: 'Your account is locked with another device, please use that device to login.'
+        };
+      }
+    } catch (err) {
+      console.error('Error validating device:', err);
+      return { valid: false, message: 'Validation error' };
     }
   }
 
@@ -281,13 +338,25 @@ class DatabaseService {
   }
 
   async deleteUser(uid) {
+    if (!uid) {
+      throw new Error('User ID is required for deletion');
+    }
+
     try {
+      console.log(`[Database] Deleting user: ${uid}`);
+
+      // Delete user from Firebase Realtime Database
       await remove(ref(rtDb, `users/${uid}`));
+      console.log(`[Database] User ${uid} removed from database`);
+
+      // Delete all posts by this user
       await this.deletePostsByUser(uid);
+      console.log(`[Database] Posts deleted for user ${uid}`);
+
       return true;
     } catch (err) {
-      console.error('Error deleting user:', err);
-      return false;
+      console.error(`[Database] Error deleting user ${uid}:`, err);
+      throw err; // Throw error instead of returning false
     }
   }
 
