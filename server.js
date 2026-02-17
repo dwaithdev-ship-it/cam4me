@@ -19,16 +19,16 @@ app.use((req, res, next) => {
 
 // Root Route
 app.get('/', (req, res) => {
-    res.send('Cam4Me Server Running');
+    res.send('Chatcam Server Running');
 });
 
 // PostgreSQL Pool
 const pool = new pg.Pool({
-    user: 'myuser',
+    user: 'admin',
     host: '127.0.0.1',
-    database: 'cam4me',
-    password: 'mypassword',
-    port: 5432,
+    database: 'mydb',
+    password: 'admin123',
+    port: 5433,
 });
 
 // Endpoints
@@ -140,6 +140,68 @@ app.post('/api/master-data/categories', async (req, res) => {
     try {
         await pool.query('INSERT INTO admin_masterdata_category (name) VALUES ($1)', [name]);
         res.status(201).json({ message: 'Category added' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// --- DELETE ENDPOINTS ---
+
+// Delete Location (can be targeted by state, district, mandal, or village)
+app.delete('/api/master-data/locations', async (req, res) => {
+    const { state_name, district_name, constituency_name, mandal_name } = req.body;
+    let queryStr = 'DELETE FROM admin_masterdata_location WHERE 1=1';
+    const params = [];
+
+    if (state_name) {
+        params.push(state_name);
+        queryStr += ` AND state_name = $${params.length}`;
+    }
+    if (district_name) {
+        params.push(district_name);
+        queryStr += ` AND district_name = $${params.length}`;
+    }
+    if (constituency_name) {
+        params.push(constituency_name);
+        queryStr += ` AND constituency_name = $${params.length}`;
+    }
+    if (mandal_name) {
+        params.push(mandal_name);
+        queryStr += ` AND mandal_name = $${params.length}`;
+    }
+
+    if (params.length === 0) {
+        return res.status(400).json({ error: 'Missing deletion criteria' });
+    }
+
+    try {
+        await pool.query(queryStr, params);
+        res.json({ message: 'Location(s) deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Delete City
+app.delete('/api/master-data/cities', async (req, res) => {
+    const { name } = req.body;
+    try {
+        await pool.query('DELETE FROM admin_masterdata_city WHERE name = $1', [name]);
+        res.json({ message: 'City deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Delete Category
+app.delete('/api/master-data/categories', async (req, res) => {
+    const { name } = req.body;
+    try {
+        await pool.query('DELETE FROM admin_masterdata_category WHERE name = $1', [name]);
+        res.json({ message: 'Category deleted' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Database error' });

@@ -1,4 +1,4 @@
-# CAM4ME Mobile Build Guide
+# Chatcam Mobile Build Guide
 
 ## 📱 Android Build Steps
 

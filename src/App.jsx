@@ -215,11 +215,13 @@ function AppContent() {
   const [newLocationInputs, setNewLocationInputs] = useState({
     state: '',
     district: {}, // { stateName: '' }
-    mandal: {}, // { constiName: '' }
-    village: {} // { mandalName: '' }
+    constituency: {}, // { districtName: '' }
+    mandal: {}, // { constituencyName: '' }
   });
   const [newCityInput, setNewCityInput] = useState('');
   const [expandedItems, setExpandedItems] = useState({}); // { itemKey: boolean }
+  const [citySearch, setCitySearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
 
   // Derived Admin Master Data for legacy UI support if needed
   const adminMasterData = {
@@ -238,10 +240,10 @@ function AppContent() {
     } catch (err) {
       console.warn('Failed to get device ID, using fallback:', err);
       // Fallback for web or if Device API fails
-      let id = localStorage.getItem('cam4me_device_id');
+      let id = localStorage.getItem('chatcam_device_id');
       if (!id) {
         id = 'dev_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('cam4me_device_id', id);
+        localStorage.setItem('chatcam_device_id', id);
       }
       return id;
     }
@@ -556,6 +558,8 @@ function AppContent() {
       } else {
         throw new Error('No location data received from database/API');
       }
+      // Always ensure local JSON is loaded for the 'Quick Add' dropdown
+      fetchLocalLocationData();
     } catch (err) {
       console.warn("Failed to load master data from database, trying local JSON fallback:", err.message);
       const jsonData = await fetchLocalLocationData();
@@ -675,7 +679,9 @@ function AppContent() {
         });
 
         // Background info update (non-blocking)
-        const deviceId = getDeviceId();
+        getDeviceId().then(id => {
+          // just ensures it's fetched if needed in future
+        });
         // deviceIP is handled by the background useEffect
       } else {
         setCurrentUser(null);
@@ -709,8 +715,9 @@ function AppContent() {
         if (data) {
           console.log('[Auth] Found cached profile, immediate navigation triggered');
           applyProfileData(data);
-          // Navigate immediately if setup is complete
-          if (data.setupCompleted && !isNewSignupFlow && !isSigningUpRef.current) {
+          // Navigate immediately ONLY if on auth/onboarding screens and setup is complete
+          const authScreens = ['welcome_mobile', 'signin', 'signup_options', 'terms', 'profile_setup', 'forgot_password', 'location', 'search'];
+          if (data.setupCompleted && !isNewSignupFlow && !isSigningUpRef.current && authScreens.includes(currentScreen)) {
             setCurrentScreen('feed');
           }
         }
@@ -747,7 +754,7 @@ function AppContent() {
           const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
 
           // ONE DEVICE POLICY - Lock account to first device used (Skip for Admins/Managers)
-          const thisDevice = getDeviceId();
+          const thisDevice = await getDeviceId();
           const currentIP = deviceIP || '0.0.0.0'; // NON-BLOCKING FALLBACK
 
           if (!isAdmin && !isManager && data.trustedDeviceId && data.trustedDeviceId !== thisDevice) {
@@ -1195,8 +1202,8 @@ function AppContent() {
         setupCompleted: false,
         termsAccepted: true,
         hasCompletedOnboarding: false,
-        trustedDeviceId: getDeviceId(),
-        lastDeviceId: getDeviceId(),
+        trustedDeviceId: await getDeviceId(),
+        lastDeviceId: await getDeviceId(),
         lastIP: deviceIP || '0.0.0.0', // Use cached or fallback immediately
         registrationDate: new Date().toISOString(),
         lastLoginTime: new Date().toISOString()
@@ -1241,7 +1248,17 @@ function AppContent() {
       }
 
       // Device matches or no device check - proceed with login
-      // Navigation is now reactively handled by the Auth useEffect
+      // Fetch user data to check if setup is complete
+      const userData = await database.getUser(user.uid);
+
+      if (userData && userData.setupCompleted) {
+        // User has completed setup - navigate to feed
+        console.log('[SignIn] Setup completed, navigating to feed');
+        setCurrentScreen('feed');
+      } else {
+        // User hasn't completed setup - let auth listener handle navigation
+        console.log('[SignIn] Setup not completed, auth listener will handle navigation');
+      }
     } catch (error) {
       console.error("Signin Error:", error);
       alert("Login failed: " + error.message);
@@ -1294,7 +1311,7 @@ function AppContent() {
       const templateParams = {
         to_email: email,
         otp_code: otp,
-        project_name: 'Cam4me'
+        project_name: 'Chatcam'
       };
 
       await emailjs.send(
@@ -1534,7 +1551,7 @@ function AppContent() {
           selectedCategory,
           setupCompleted: true,
           hasCompletedOnboarding: true,
-          lastDeviceId: getDeviceId(),
+          lastDeviceId: await getDeviceId(),
           lastIP: deviceIP || await getDeviceIP(),
           lastLoginTime: new Date().toISOString()
         };
@@ -3273,8 +3290,8 @@ function AppContent() {
                       setupCompleted: true,
                       termsAccepted: true,
                       hasCompletedOnboarding: true,
-                      trustedDeviceId: getDeviceId(),
-                      lastDeviceId: getDeviceId(),
+                      trustedDeviceId: await getDeviceId(),
+                      lastDeviceId: await getDeviceId(),
                       lastIP: deviceIP || '0.0.0.0', // NON-BLOCKING
                       lastLoginTime: new Date().toISOString()
                     };
@@ -3487,7 +3504,7 @@ function AppContent() {
 
         <div className="content">
           <div className="camera-logo-gradient">
-            <img src="/cam4me_logo.png" alt="CAM4ME Logo" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+            <img src="/cam4me_logo.png" alt="Chatcam Logo" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
           </div>
 
           <h1 className="auth-title">Sign In</h1>
@@ -3584,7 +3601,7 @@ function AppContent() {
 
 
           <div className="camera-logo-gradient">
-            <img src="/cam4me_logo.png" alt="CAM4ME Logo" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+            <img src="/cam4me_logo.png" alt="Chatcam Logo" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
           </div>
 
           <div className="terms-intro">
@@ -3687,7 +3704,7 @@ function AppContent() {
 
         <div className="content location-content">
           <div className="profile-logo-small">
-            <img src="/cam4me_logo.png" alt="CAM4ME" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+            <img src="/cam4me_logo.png" alt="Chatcam" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
           </div>
 
           <div className="location-permission-card">
@@ -4547,6 +4564,15 @@ function AppContent() {
 
             <div style={{ marginBottom: '20px' }}>
               <strong style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666' }}>Post/Search Cities</strong>
+              {/* Search Box */}
+              <div style={{ marginBottom: '10px' }}>
+                <input
+                  placeholder="Search Cities..."
+                  value={citySearch}
+                  onChange={(e) => setCitySearch(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: '#f9f9f9' }}
+                />
+              </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   placeholder="New city name"
@@ -4572,15 +4598,45 @@ function AppContent() {
                   style={{ background: '#9C27B0', color: 'white', border: 'none', borderRadius: '8px', padding: '0 16px' }}
                 >Add</button>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-                {(masterData.cities || []).map(c => (
-                  <span key={c} style={{ background: '#f5f5f5', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', border: '1px solid #eee' }}>{c}</span>
-                ))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                {(masterData.cities || [])
+                  .filter(c => c.toLowerCase().includes(citySearch.toLowerCase()))
+                  .map(c => (
+                    <span key={c} style={{ background: '#f5f5f5', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', border: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      {c}
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Delete city "${c}"?`)) {
+                            try {
+                              const res = await fetch(`${API_BASE_URL}/cities`, {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: c })
+                              });
+                              if (!res.ok) throw new Error('API failed');
+                              syncMasterData();
+                            } catch (err) { alert('Failed: ' + err.message); }
+                          }
+                        }}
+                        style={{ border: 'none', background: 'none', color: '#ff4444', padding: '0 2px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                      >×</button>
+                    </span>
+                  ))}
               </div>
             </div>
 
             <div>
               <strong style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#666' }}>Post/Search Categories</strong>
+              {/* Search Box */}
+              <div style={{ marginBottom: '10px' }}>
+                <input
+                  placeholder="Search Categories..."
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: '#f9f9f9' }}
+                />
+              </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   placeholder="New category name"
@@ -4606,10 +4662,31 @@ function AppContent() {
                   style={{ background: '#9C27B0', color: 'white', border: 'none', borderRadius: '8px', padding: '0 16px' }}
                 >Add</button>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-                {(masterData.categories || []).map(cat => (
-                  <span key={cat} style={{ background: '#f3e5f5', color: '#7B1FA2', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', border: '1px solid #e1bee7' }}>{cat}</span>
-                ))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                {(masterData.categories || [])
+                  .filter(cat => cat.toLowerCase().includes(categorySearch.toLowerCase()))
+                  .map(cat => (
+                    <span key={cat} style={{ background: '#f3e5f5', color: '#7B1FA2', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', border: '1px solid #e1bee7', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      {cat}
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Delete category "${cat}"?`)) {
+                            try {
+                              const res = await fetch(`${API_BASE_URL}/categories`, {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: cat })
+                              });
+                              if (!res.ok) throw new Error('API failed');
+                              syncMasterData();
+                            } catch (err) { alert('Failed: ' + err.message); }
+                          }
+                        }}
+                        style={{ border: 'none', background: 'none', color: '#ff4444', padding: '0 2px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                      >×</button>
+                    </span>
+                  ))}
               </div>
             </div>
           </div>
@@ -4619,6 +4696,7 @@ function AppContent() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h2 style={{ color: '#7B1FA2', borderBottom: '2px solid #f3e5f5', paddingBottom: '10px', fontSize: '18px', margin: 0, flex: 1 }}>User Location Hierarchy</h2>
             </div>
+
 
             {/* Add State */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', background: '#f5f5f5', padding: '10px', borderRadius: '8px' }}>
@@ -4636,7 +4714,7 @@ function AppContent() {
                     const res = await fetch(`${API_BASE_URL}/locations`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ state: s, district: 'N/A', mandal: 'N/A', village: 'N/A' })
+                      body: JSON.stringify({ state_name: s, district_name: 'N/A', constituency_name: 'N/A', mandal_name: 'N/A' })
                     });
                     if (!res.ok) throw new Error('API failed');
                     setNewLocationInputs({ ...newLocationInputs, state: '' });
@@ -4650,10 +4728,29 @@ function AppContent() {
             {/* Hierarchical View */}
             {Object.entries(masterData.locations || {}).sort().map(([st, districts]) => (
               <div key={st} style={{ marginBottom: '16px', border: '1px solid #eee', borderRadius: '10px' }}>
-                <div onClick={() => setExpandedItems({ ...expandedItems, [st]: !expandedItems[st] })}
-                  style={{ background: '#f3e5f5', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
-                  <strong style={{ color: '#7B1FA2' }}>{st}</strong>
-                  <span>{expandedItems[st] ? '▲' : '▼'}</span>
+                <div style={{ background: '#f3e5f5', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}>
+                  <strong style={{ color: '#7B1FA2' }} onClick={() => setExpandedItems({ ...expandedItems, [st]: !expandedItems[st] })}>{st}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`DELETE ENTIRE STATE "${st}" and all its districts/mandals?`)) {
+                          try {
+                            const res = await fetch(`${API_BASE_URL}/locations`, {
+                              method: 'DELETE',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ state_name: st })
+                            });
+                            if (!res.ok) throw new Error('API failed');
+                            syncMasterData();
+                          } catch (err) { alert('Failed: ' + err.message); }
+                        }
+                      }}
+                      style={{ border: 'none', background: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}
+                      title="Delete State"
+                    >×</button>
+                    <span onClick={() => setExpandedItems({ ...expandedItems, [st]: !expandedItems[st] })}>{expandedItems[st] ? '▲' : '▼'}</span>
+                  </div>
                 </div>
 
                 {expandedItems[st] && (
@@ -4675,7 +4772,7 @@ function AppContent() {
                             const res = await fetch(`${API_BASE_URL}/locations`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ state: st, district: d, mandal: 'N/A', village: 'N/A' })
+                              body: JSON.stringify({ state_name: st, district_name: d, constituency_name: 'N/A', mandal_name: 'N/A' })
                             });
                             if (!res.ok) throw new Error('API failed');
                             setNewLocationInputs({ ...newLocationInputs, district: { ...newLocationInputs.district, [st]: '' } });
@@ -4686,84 +4783,147 @@ function AppContent() {
                       >Add</button>
                     </div>
 
-                    {Object.entries(districts).sort().map(([dst, mandals]) => (
+
+                    {Object.entries(districts).sort().map(([dst, constituencies]) => (
                       <div key={dst} style={{ marginLeft: '12px', marginBottom: '10px', borderLeft: '2px solid #9C27B0', paddingLeft: '10px' }}>
-                        <div onClick={() => setExpandedItems({ ...expandedItems, [`${st}-${dst}`]: !expandedItems[`${st}-${dst}`] })}
-                          style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer', padding: '4px 0' }}>
-                          <span style={{ fontWeight: '600', fontSize: '14px' }}>{dst}</span>
-                          <span style={{ fontSize: '10px' }}>{expandedItems[`${st}-${dst}`] ? '▲' : '▼'}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer', padding: '4px 0' }}>
+                          <span style={{ fontWeight: '600', fontSize: '14px' }} onClick={() => setExpandedItems({ ...expandedItems, [`${st}-${dst}`]: !expandedItems[`${st}-${dst}`] })}>{dst}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete district "${dst}" in ${st}?`)) {
+                                  try {
+                                    const res = await fetch(`${API_BASE_URL}/locations`, {
+                                      method: 'DELETE',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ state_name: st, district_name: dst })
+                                    });
+                                    if (!res.ok) throw new Error('API failed');
+                                    syncMasterData();
+                                  } catch (err) { alert('Failed: ' + err.message); }
+                                }
+                              }}
+                              style={{ border: 'none', background: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '16px' }}
+                            >×</button>
+                            <span style={{ fontSize: '10px' }} onClick={() => setExpandedItems({ ...expandedItems, [`${st}-${dst}`]: !expandedItems[`${st}-${dst}`] })}>{expandedItems[`${st}-${dst}`] ? '▲' : '▼'}</span>
+                          </div>
                         </div>
 
                         {expandedItems[`${st}-${dst}`] && (
                           <div style={{ marginTop: '5px' }}>
-                            {/* Add Mandal */}
+                            {/* Add Constituency */}
                             <div style={{ display: 'flex', gap: '5px', marginBottom: '8px' }}>
                               <input
-                                placeholder="Add Mandal"
-                                value={newLocationInputs.mandal[dst] || ''}
-                                onChange={(e) => setNewLocationInputs({ ...newLocationInputs, mandal: { ...newLocationInputs.mandal, [dst]: e.target.value } })}
+                                placeholder="Add Constituency"
+                                value={newLocationInputs.constituency[dst] || ''}
+                                onChange={(e) => setNewLocationInputs({ ...newLocationInputs, constituency: { ...newLocationInputs.constituency, [dst]: e.target.value } })}
                                 style={{ flex: 1, padding: '5px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ddd' }}
                               />
                               <button
                                 onClick={async () => {
-                                  const m = newLocationInputs.mandal[dst].trim();
-                                  if (!m) return;
+                                  const c = newLocationInputs.constituency[dst].trim();
+                                  if (!c) return;
                                   try {
                                     const res = await fetch(`${API_BASE_URL}/locations`, {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ state: st, district: dst, mandal: m, village: 'N/A' })
+                                      body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: c, mandal_name: 'N/A' })
                                     });
                                     if (!res.ok) throw new Error('API failed');
-                                    setNewLocationInputs({ ...newLocationInputs, mandal: { ...newLocationInputs.mandal, [dst]: '' } });
+                                    setNewLocationInputs({ ...newLocationInputs, constituency: { ...newLocationInputs.constituency, [dst]: '' } });
                                     syncMasterData();
                                   } catch (e) { alert('Failed: ' + e.message); }
                                 }}
-                                style={{ background: '#7B1FA2', color: '#fff', border: 'none', borderRadius: '4px', padding: '0 8px', fontSize: '10px' }}
+                                style={{ background: '#9C27B0', color: '#fff', border: 'none', borderRadius: '4px', padding: '0 10px', fontSize: '11px' }}
                               >Add</button>
                             </div>
 
-                            {Object.entries(mandals).sort().map(([mnd, villages]) => (
-                              <div key={mnd} style={{ marginLeft: '12px', marginBottom: '8px', borderLeft: '2px solid #BA68C8', paddingLeft: '10px' }}>
-                                <div onClick={() => setExpandedItems({ ...expandedItems, [`${st}-${dst}-${mnd}`]: !expandedItems[`${st}-${dst}-${mnd}`] })}
-                                  style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer', padding: '2px 0' }}>
-                                  <span style={{ fontSize: '13px', color: '#555' }}>{mnd}</span>
-                                  <span style={{ fontSize: '10px' }}>{expandedItems[`${st}-${dst}-${mnd}`] ? '▲' : '▼'}</span>
+                            {/* List Constituencies */}
+                            {Object.entries(constituencies || {}).sort().map(([constituency, mandals]) => (
+                              <div key={constituency} style={{ marginLeft: '12px', marginBottom: '5px', borderLeft: '2px solid #AB47BC', paddingLeft: '8px' }}>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer', padding: '2px 0' }}>
+                                  <span onClick={() => setExpandedItems({ ...expandedItems, [`${st}-${dst}-${constituency}`]: !expandedItems[`${st}-${dst}-${constituency}`] })} style={{ fontSize: '13px', color: '#333' }}>{constituency} (Constituency)</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm(`Delete constituency "${constituency}"?`)) {
+                                          try {
+                                            const res = await fetch(`${API_BASE_URL}/locations`, {
+                                              method: 'DELETE',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: constituency })
+                                            });
+                                            if (!res.ok) throw new Error('API failed');
+                                            syncMasterData();
+                                          } catch (err) { alert('Failed: ' + err.message); }
+                                        }
+                                      }}
+                                      style={{ border: 'none', background: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '12px' }}
+                                    >×</button>
+                                    <span style={{ fontSize: '10px' }} onClick={() => setExpandedItems({ ...expandedItems, [`${st}-${dst}-${constituency}`]: !expandedItems[`${st}-${dst}-${constituency}`] })}>{expandedItems[`${st}-${dst}-${constituency}`] ? '▲' : '▼'}</span>
+                                  </div>
                                 </div>
 
-                                {expandedItems[`${st}-${dst}-${mnd}`] && (
-                                  <div style={{ marginTop: '5px' }}>
-                                    {/* Add Village */}
-                                    <div style={{ display: 'flex', gap: '5px', marginBottom: '6px' }}>
+                                {/* Mandals Level */}
+                                {expandedItems[`${st}-${dst}-${constituency}`] && (
+                                  <div style={{ marginTop: '5px', paddingLeft: '5px' }}>
+                                    {/* Add Mandal */}
+                                    <div style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                       <input
-                                        placeholder="Add Village"
-                                        value={newLocationInputs.village[mnd] || ''}
-                                        onChange={(e) => setNewLocationInputs({ ...newLocationInputs, village: { ...newLocationInputs.village, [mnd]: e.target.value } })}
+                                        placeholder="Add Mandal"
+                                        value={newLocationInputs.mandal[constituency] || ''}
+                                        onChange={(e) => setNewLocationInputs({ ...newLocationInputs, mandal: { ...newLocationInputs.mandal, [constituency]: e.target.value } })}
                                         style={{ flex: 1, padding: '4px', fontSize: '11px', borderRadius: '4px', border: '1px solid #ddd' }}
                                       />
                                       <button
                                         onClick={async () => {
-                                          const v = newLocationInputs.village[mnd].trim();
-                                          if (!v) return;
+                                          const m = newLocationInputs.mandal[constituency].trim();
+                                          if (!m) return;
                                           try {
                                             const res = await fetch(`${API_BASE_URL}/locations`, {
                                               method: 'POST',
                                               headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ state: st, district: dst, mandal: mnd, village: v })
+                                              body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: constituency, mandal_name: m })
                                             });
                                             if (!res.ok) throw new Error('API failed');
-                                            setNewLocationInputs({ ...newLocationInputs, village: { ...newLocationInputs.village, [mnd]: '' } });
+                                            setNewLocationInputs({ ...newLocationInputs, mandal: { ...newLocationInputs.mandal, [constituency]: '' } });
                                             syncMasterData();
                                           } catch (e) { alert('Failed: ' + e.message); }
                                         }}
-                                        style={{ background: '#BA68C8', color: '#fff', border: 'none', borderRadius: '4px', padding: '0 6px', fontSize: '9px' }}
+                                        style={{ background: '#AB47BC', color: '#fff', border: 'none', borderRadius: '4px', padding: '0 8px', fontSize: '10px' }}
                                       >Add</button>
                                     </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                      {villages.map(v => (
-                                        <span key={v} style={{ background: '#f9f9f9', padding: '2px 6px', borderRadius: '8px', fontSize: '10px', color: '#888', border: '1px solid #eee' }}>{v}</span>
-                                      ))}
-                                    </div>
+
+                                    {/* List Mandals */}
+                                    {Array.isArray(mandals) && mandals.length > 0 && (
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                        {mandals.map(mandal => (
+                                          <span key={mandal} style={{ background: '#f8f8f8', border: '1px solid #eee', borderRadius: '4px', padding: '2px 6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {mandal}
+                                            <button
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm(`Delete mandal "${mandal}"?`)) {
+                                                  try {
+                                                    const res = await fetch(`${API_BASE_URL}/locations`, {
+                                                      method: 'DELETE',
+                                                      headers: { 'Content-Type': 'application/json' },
+                                                      body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: constituency, mandal_name: mandal })
+                                                    });
+                                                    if (!res.ok) throw new Error('API failed');
+                                                    syncMasterData();
+                                                  } catch (err) { alert('Failed: ' + err.message); }
+                                                }
+                                              }}
+                                              style={{ border: 'none', background: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', padding: 0 }}
+                                            >×</button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -6078,7 +6238,7 @@ function AppContent() {
 
             <h3 style={{ color: 'white', margin: '20px 0 10px', fontSize: '16px', fontWeight: '600', textAlign: 'left' }}>About App</h3>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={() => setCurrentScreen('about_us')}>
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <span style={{ fontSize: '22px', width: '24px', color: 'white' }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -6090,7 +6250,7 @@ function AppContent() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={() => setCurrentScreen('privacy_policy')}>
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <span style={{ fontSize: '22px', width: '24px', color: 'white' }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -6178,7 +6338,7 @@ function AppContent() {
 
           <div className="logo-container" style={{ margin: 0 }}>
             <img src="/logo_bubble.png" alt="Logo" style={{ width: '32px' }} />
-            <h1 className="app-title" style={{ fontSize: '18px' }}>CAM4ME</h1>
+            <h1 className="app-title" style={{ fontSize: '18px' }}>Chatcam</h1>
           </div>
 
           <button onClick={() => setCurrentScreen('menu')} style={{ background: 'none', border: 'none', color: 'white', padding: 0 }}>
@@ -6759,7 +6919,7 @@ function AppContent() {
               </button>
             </div>
 
-            <button onClick={() => setCurrentScreen('menu')} style={{ background: 'none', border: 'none', color: 'white', padding: 0 }}>
+            <button onClick={(e) => { e.stopPropagation(); setCurrentScreen('menu'); }} style={{ background: 'none', border: 'none', color: 'white', padding: 0 }}>
               <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
               </svg>
@@ -6795,7 +6955,7 @@ function AppContent() {
                 </p>
               </div>
               <button
-                onClick={() => setCurrentScreen('newpost')}
+                onClick={(e) => { e.stopPropagation(); setCurrentScreen('newpost'); }}
                 style={{
                   width: '42px',
                   height: '42px',
@@ -6807,7 +6967,8 @@ function AppContent() {
                   justifyContent: 'center',
                   color: '#00F5FF',
                   cursor: 'pointer'
-                }}>
+                }}
+              >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                 </svg>
@@ -6817,7 +6978,7 @@ function AppContent() {
             {/* Write Message Bar */}
             <div style={{ padding: '0 16px 25px' }}>
               <div
-                onClick={() => setCurrentScreen('newpost')}
+                onClick={(e) => { e.stopPropagation(); setCurrentScreen('newpost'); }}
                 style={{
                   background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.08)',
@@ -7096,7 +7257,7 @@ function AppContent() {
                 </div>
               </div>
             )}
-        </div >
+        </div>
       </>
     );
   }
@@ -7253,8 +7414,8 @@ function AppContent() {
                 </svg>
               </button>
               <div className="logo-container" style={{ flex: 1, marginRight: '44px' }}>
-                <img src="/logo_bubble.png" alt="CAM4ME Logo" className="logo-image" />
-                <h1 className="app-title">CAM4ME</h1>
+                <img src="/logo_bubble.png" alt="Chatcam Logo" className="logo-image" />
+                <h1 className="app-title">Chatcam</h1>
               </div>
             </div>
 
@@ -7737,6 +7898,105 @@ function AppContent() {
     );
   }
 
+  if (currentScreen === 'about_us') {
+    return (
+      <div className="app-container" style={{ background: '#0e1c2f' }}>
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+        <div className="common-header" style={{ background: '#1a2332', padding: '15px' }}>
+          <button onClick={() => setCurrentScreen('menu')} style={{ background: 'none', border: 'none', color: '#00F5FF', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <span style={{ fontSize: '16px', fontWeight: '600' }}>Back</span>
+          </button>
+          <span style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>About Us</span>
+          <div style={{ width: '24px' }}></div>
+        </div>
+        <div className="content" style={{ padding: '20px', overflowY: 'auto', color: 'white', lineHeight: '1.6' }}>
+          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '15px' }}>
+            <h2 style={{ color: '#00F5FF', marginBottom: '20px', fontSize: '24px' }}>Welcome to ChatCam</h2>
+
+            <p style={{ marginBottom: '20px' }}>ChatCam is a vibrant community platform designed to connect people, share moments, and build meaningful relationships. Whether you're looking to network, discover local events, or simply stay connected with your community, ChatCam brings it all together in one seamless experience.</p>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>Our Mission</h3>
+            <p style={{ marginBottom: '20px' }}>We believe in the power of authentic connections. Our mission is to create a safe, engaging, and user-friendly platform where individuals can express themselves, share their stories, and discover what's happening around them.</p>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>What We Offer</h3>
+            <ul style={{ paddingLeft: '20px', marginBottom: '20px' }}>
+              <li style={{ marginBottom: '10px' }}><strong>Community Feed:</strong> Stay updated with posts, photos, and videos from your local community</li>
+              <li style={{ marginBottom: '10px' }}><strong>Location-Based Discovery:</strong> Find people, events, and content relevant to your area</li>
+              <li style={{ marginBottom: '10px' }}><strong>Privacy First:</strong> Your data security and privacy are our top priorities</li>
+              <li style={{ marginBottom: '10px' }}><strong>Easy to Use:</strong> Simple, intuitive interface designed for everyone</li>
+            </ul>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>Get in Touch</h3>
+            <p style={{ marginBottom: '10px' }}>We'd love to hear from you! Whether you have questions, feedback, or just want to say hello:</p>
+            <p style={{ marginBottom: '5px' }}><strong>Email:</strong> <a href="mailto:info@chatcam.com" style={{ color: '#4A90E2' }}>info@chatcam.com</a></p>
+            <p style={{ marginBottom: '20px' }}><strong>Support:</strong> <a href="mailto:support@chatcam.com" style={{ color: '#4A90E2' }}>support@chatcam.com</a></p>
+
+            <p style={{ marginTop: '30px', fontSize: '14px', color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>Thank you for being part of the ChatCam community!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentScreen === 'privacy_policy') {
+    return (
+      <div className="app-container" style={{ background: '#0e1c2f' }}>
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+        <div className="common-header" style={{ background: '#1a2332', padding: '15px' }}>
+          <button onClick={() => setCurrentScreen('menu')} style={{ background: 'none', border: 'none', color: '#00F5FF', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <span style={{ fontSize: '16px', fontWeight: '600' }}>Back</span>
+          </button>
+          <span style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>Privacy Policy</span>
+          <div style={{ width: '24px' }}></div>
+        </div>
+        <div className="content" style={{ padding: '20px', overflowY: 'auto', color: 'white', lineHeight: '1.6' }}>
+          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '15px' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Effective Date: 17/02/2026</p>
+            <p style={{ fontWeight: 'bold', marginBottom: '20px' }}>Last Updated: 17/02/2026</p>
+
+            <p style={{ marginBottom: '20px' }}>ChatCam (“we,” “our,” or “us”) values your privacy. This Privacy Policy explains what information we collect and how we use it.</p>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>Information We Collect</h3>
+            <p style={{ marginBottom: '10px' }}>We automatically collect limited technical data, including:</p>
+            <ul style={{ paddingLeft: '20px', marginBottom: '15px' }}>
+              <li>Device type</li>
+              <li>Operating system</li>
+              <li>IP address</li>
+              <li>App usage data</li>
+              <li>Crash logs</li>
+            </ul>
+            <p style={{ marginBottom: '20px' }}>We do not collect payment information.</p>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>How We Use Information</h3>
+            <p style={{ marginBottom: '10px' }}>We use this data to:</p>
+            <ul style={{ paddingLeft: '20px', marginBottom: '15px' }}>
+              <li>Maintain and improve the app</li>
+              <li>Fix bugs and technical issues</li>
+              <li>Monitor performance and security</li>
+            </ul>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>Data Sharing</h3>
+            <p style={{ marginBottom: '20px' }}>We do not sell your data. Information may be shared only with service providers or if required by law.</p>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>Children’s Privacy</h3>
+            <p style={{ marginBottom: '20px' }}>ChatCam is not intended for children under 13, and we do not knowingly collect data from children.</p>
+
+            <h3 style={{ color: '#00F5FF', marginBottom: '10px' }}>Contact Us</h3>
+            <p>If you have questions about this Privacy Policy, contact us at:<br />
+              <a href="mailto:info@chatcam.com" style={{ color: '#4A90E2' }}>info@chatcam.com</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Final catch-all for unknown screens
   return (
     <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', color: 'white', background: '#111' }}>
@@ -7763,8 +8023,6 @@ function AppContent() {
 }
 
 export default App;
-
-
 
 
 

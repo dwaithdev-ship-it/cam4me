@@ -3,11 +3,11 @@ import fs from 'fs';
 import path from 'path';
 
 const pool = new pg.Pool({
-    user: 'myuser',
+    user: 'admin',
     host: 'localhost',
-    database: 'cam4me',
-    password: 'mypassword',
-    port: 5432,
+    database: 'mydb',
+    password: 'admin123',
+    port: 5433,
 });
 
 async function seed() {

@@ -1,0 +1,3 @@
+﻿CONTAINER ID   NAMES         IMAGE             STATUS                   PORTS
+5071da349268   postgresDB    postgres:15       Up About a minute        0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+09935468f241   postgressDB   postgres:latest   Exited (1) 2 hours ago   

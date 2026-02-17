@@ -1,26 +1,45 @@
 {
   "project_info": {
-    "project_number": "891577361614",
-    "project_id": "cam4me-prod",
-    "storage_bucket": "cam4me-prod.firebasestorage.app"
+    "project_number": "163790979810",
+    "firebase_url": "https://cam4me-project-default-rtdb.firebaseio.com",
+    "project_id": "cam4me-project",
+    "storage_bucket": "cam4me-project.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:891577361614:android:8467ce418179cfa307dc9f",
+        "mobilesdk_app_id": "1:163790979810:android:e2f9c9fdbd3e28b73914bb",
         "android_client_info": {
-          "package_name": "Cam4me.andriod"
+          "package_name": "com.cam4me.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "163790979810-b4rmj1bpgdu8l5jdl7eckcbs8c5g6cgj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cam4me.app",
+            "certificate_hash": "3f80483bda3d06fc0dcb4960f5b6fe319c473135"
+          }
+        },
+        {
+          "client_id": "163790979810-t5r8cmj8uhf3rc41nlq47c7f8dgs8ofu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyB_vf-esa4TDjVGlp0YAg7ciS94Ug3DPzk"
+          "current_key": "AIzaSyDl5EnUNVAm8N2fsC6iZMpw7BHH3hsmZUI"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "163790979810-n35jf61vtiftrds0jtn2dikvcbrtg202.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

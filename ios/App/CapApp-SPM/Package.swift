@@ -14,6 +14,7 @@ let package = Package(
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.0.2"),
         .package(name: "CapacitorFirebaseAuthentication", path: "..\..\..\node_modules\@capacitor-firebase\authentication"),
         .package(name: "CapacitorCamera", path: "..\..\..\node_modules\@capacitor\camera"),
+        .package(name: "CapacitorDevice", path: "..\..\..\node_modules\@capacitor\device"),
         .package(name: "CapacitorGeolocation", path: "..\..\..\node_modules\@capacitor\geolocation"),
         .package(name: "CapacitorPreferences", path: "..\..\..\node_modules\@capacitor\preferences")
     ],
@@ -25,6 +26,7 @@ let package = Package(
                 .product(name: "Cordova", package: "capacitor-swift-pm"),
                 .product(name: "CapacitorFirebaseAuthentication", package: "CapacitorFirebaseAuthentication"),
                 .product(name: "CapacitorCamera", package: "CapacitorCamera"),
+                .product(name: "CapacitorDevice", package: "CapacitorDevice"),
                 .product(name: "CapacitorGeolocation", package: "CapacitorGeolocation"),
                 .product(name: "CapacitorPreferences", package: "CapacitorPreferences")
             ]

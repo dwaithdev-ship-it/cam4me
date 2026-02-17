@@ -1,7 +1,7 @@
-# Project Release Notes - Cam4Me
+# Project Release Notes - Chatcam
 
 ## 1. Project Overview
-**Cam4Me** is a hyper-local community engagement platform designed for mobile users. It allows users to view local feeds, post updates, and interact with community categories. The project includes specialized dashboards for **Ad Managers** and **System Admins**.
+**Chatcam** is a hyper-local community engagement platform designed for mobile users. It allows users to view local feeds, post updates, and interact with community categories. The project includes specialized dashboards for **Ad Managers** and **System Admins**.
 
 ---
 
