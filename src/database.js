@@ -1,443 +1,346 @@
-import { ref, set, get, update, push, remove, serverTimestamp, query, orderByChild, equalTo } from "firebase/database";
-import { rtDb } from "./firebase";
 import { Capacitor } from '@capacitor/core';
 
 class DatabaseService {
   constructor() {
     this.isWeb = Capacitor.getPlatform() === 'web';
+    this.baseUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+      ? 'http://localhost:5000/api'
+      : `${window.location.origin}/api`;
+  }
+
+  getHeaders() {
+    const token = localStorage.getItem('chatcam_token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : ''
+    };
   }
 
   async initialize() {
-    console.log('Firebase Database service initializing...');
+    console.log('Database service initializing (Connecting to Express API)...');
     try {
-      // Basic connectivity check: try to read a shared node or root
-      const snapshot = await get(ref(rtDb, '.info/connected'));
-      console.log('Firebase connection status:', snapshot.val());
-      return true;
+      // Use health check path that matches proxy
+      const response = await fetch(`${window.location.origin}/health`);
+      if (response.ok) return true;
+      // Fallback for direct backend check
+      const directResponse = await fetch(`http://localhost:5000/health`);
+      return directResponse.ok;
     } catch (err) {
-      console.warn('Firebase connection failed:', err.message);
+      console.warn('Backend API connection failed:', err.message);
       return false;
     }
   }
 
-  // --- USER METHODS ---
-  async saveUser(userData) {
-    if (!userData.uid) return null;
-    try {
-      const userRef = ref(rtDb, `users/${userData.uid}`);
-      const dataToSave = {
-        ...userData,
-        lastUpdated: serverTimestamp()
-      };
-      await set(userRef, dataToSave);
-      return dataToSave;
-    } catch (err) {
-      console.error('Error saving user:', err);
-      return userData;
+  // --- AUTH METHODS ---
+  async login(email, password, deviceId) {
+    const response = await fetch(`${this.baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, device_id: deviceId })
+    });
+    const data = await response.json();
+    if (response.ok) {
+      localStorage.setItem('chatcam_token', data.token);
+      localStorage.setItem('chatcam_user', JSON.stringify(data.user));
     }
+    return { ok: response.ok, ...data };
   }
 
-  async getUser(uid) {
-    if (!uid) return null;
-    try {
-      const snapshot = await get(ref(rtDb, `users/${uid}`));
-      return snapshot.exists() ? snapshot.val() : null;
-    } catch (err) {
-      console.error('Error getting user:', err);
-      return null;
-    }
+  async register(userData) {
+    const response = await fetch(`${this.baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    return { ok: response.ok, ...await response.json() };
+  }
+
+  logout() {
+    localStorage.removeItem('chatcam_token');
+    localStorage.removeItem('chatcam_user');
+  }
+
+  // --- USER METHODS ---
+  async getProfile() {
+    const response = await fetch(`${this.baseUrl}/users/profile`, {
+      headers: this.getHeaders()
+    });
+    return response.ok ? await response.json() : null;
+  }
+
+  async updateProfile(profileData) {
+    const response = await fetch(`${this.baseUrl}/users/profile`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(profileData)
+    });
+    return { ok: response.ok, ...await response.json() };
+  }
+
+  async saveUser(userData) {
+    // Alias for updateProfile used in legacy parts of App.jsx
+    return this.updateProfile(userData);
+  }
+
+  async updateUserRole(id, role) {
+    const response = await fetch(`${this.baseUrl}/users/${id}/role`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ role })
+    });
+    return response.ok;
+  }
+
+  async changePassword(newPassword) {
+    const response = await fetch(`${this.baseUrl}/users/profile`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ password: newPassword })
+    });
+    return { ok: response.ok, ...await response.json() };
   }
 
   async getAllUsers() {
-    try {
-      const snapshot = await get(ref(rtDb, 'users'));
-      if (!snapshot.exists()) return [];
-      const users = [];
-      snapshot.forEach((child) => {
-        const val = child.val();
-        if (val && typeof val === 'object') {
-          users.push({ ...val, uid: child.key });
-        }
-      });
-      return users.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
-    } catch (err) {
-      console.error('Error getting all users:', err);
-      return [];
-    }
+    const response = await fetch(`${this.baseUrl}/users`, {
+      headers: this.getHeaders()
+    });
+    return response.ok ? await response.json() : [];
   }
 
-  // --- DEVICE MANAGEMENT METHODS ---
+  async deleteUser(id) {
+    const response = await fetch(`${this.baseUrl}/users/${id}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+    return response.ok;
+  }
+
   async checkDeviceExists(deviceId) {
-    if (!deviceId) return { exists: false };
     try {
-      const usersRef = ref(rtDb, 'users');
-      const snapshot = await get(usersRef);
-      if (!snapshot.exists()) return { exists: false };
-
-      let foundUser = null;
-      snapshot.forEach((child) => {
-        const userData = child.val();
-        if (userData.deviceId === deviceId) {
-          foundUser = { uid: child.key, ...userData };
-        }
+      const response = await fetch(`${this.baseUrl}/auth/check-device/${deviceId}`, {
+        headers: this.getHeaders()
       });
-
-      return foundUser ? { exists: true, user: foundUser } : { exists: false };
-    } catch (err) {
-      console.error('Error checking device:', err);
+      return response.ok ? await response.json() : { exists: false };
+    } catch (e) {
       return { exists: false };
     }
   }
 
-  async getUserByDeviceId(deviceId) {
-    if (!deviceId) return null;
-    try {
-      const result = await this.checkDeviceExists(deviceId);
-      return result.exists ? result.user : null;
-    } catch (err) {
-      console.error('Error getting user by device:', err);
-      return null;
-    }
+  // Debug/Admin legacy methods
+  async deleteRecord(id) {
+    return this.deleteUser(id);
   }
 
-  async validateUserDevice(userId, deviceId) {
-    if (!userId || !deviceId) return { valid: false, message: 'Invalid parameters' };
-    try {
-      const user = await this.getUser(userId);
-      if (!user) return { valid: false, message: 'User not found' };
+  async clearAllRecords() {
+    console.warn('clearAllRecords called but not implemented for production security');
+    return true;
+  }
 
-      if (user.deviceId === deviceId) {
-        return { valid: true, message: 'Device matches' };
-      } else {
-        return {
-          valid: false,
-          message: 'Your account is locked with another device, please use that device to login.'
-        };
-      }
-    } catch (err) {
-      console.error('Error validating device:', err);
-      return { valid: false, message: 'Validation error' };
-    }
+  // --- MASTER DATA METHODS ---
+  async getMasterData() {
+    const response = await fetch(`${this.baseUrl}/master-data`, {
+      headers: this.getHeaders()
+    });
+    return response.ok ? await response.json() : null;
+  }
+
+  async saveLocation(data) {
+    const response = await fetch(`${this.baseUrl}/master-data/locations`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data)
+    });
+    return response.ok;
+  }
+
+  async deleteLocation(data) {
+    const response = await fetch(`${this.baseUrl}/master-data/locations`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data)
+    });
+    return response.ok;
+  }
+
+  async saveCity(name) {
+    const response = await fetch(`${this.baseUrl}/master-data/cities`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ name })
+    });
+    return response.ok;
+  }
+
+  async deleteCity(name) {
+    const response = await fetch(`${this.baseUrl}/master-data/cities`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ name })
+    });
+    return response.ok;
+  }
+
+  async saveCategory(name) {
+    const response = await fetch(`${this.baseUrl}/master-data/categories`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ name })
+    });
+    return response.ok;
+  }
+
+  async deleteCategory(name) {
+    const response = await fetch(`${this.baseUrl}/master-data/categories`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ name })
+    });
+    return response.ok;
   }
 
   // --- POST METHODS ---
   async savePost(post) {
-    try {
-      const id = post.id || push(ref(rtDb, 'posts')).key;
-      const postRef = ref(rtDb, `posts/${id}`);
-      const dataToSave = {
-        ...post,
-        id,
-        timestamp: post.timestamp || new Date().toISOString()
-      };
-      await set(postRef, dataToSave);
-      return dataToSave;
-    } catch (err) {
-      console.error('Error saving post:', err);
-      throw err; // Propagate error to caller
-    }
+    const response = await fetch(`${this.baseUrl}/posts`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(post)
+    });
+    if (!response.ok) return null;
+    const newPost = await response.json();
+    return {
+      ...newPost,
+      userId: newPost.user_id,
+      postImages: newPost.post_images,
+      postVideos: newPost.post_videos
+    };
   }
 
   async getPosts() {
-    try {
-      const snapshot = await get(ref(rtDb, 'posts'));
-      if (!snapshot.exists()) return [];
-      const posts = [];
-      snapshot.forEach((child) => {
-        posts.push(child.val());
-      });
-      return posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    } catch (err) {
-      console.error('Error getting posts:', err);
-      return [];
-    }
-  }
-
-  async getUserPosts(uid) {
-    if (!uid) return [];
-    try {
-      const postsRef = ref(rtDb, 'posts');
-      const userPostsQuery = query(postsRef, orderByChild('userId'), equalTo(uid));
-      const snapshot = await get(userPostsQuery);
-      if (!snapshot.exists()) return [];
-      const posts = [];
-      snapshot.forEach((child) => {
-        posts.push(child.val());
-      });
-      return posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    } catch (err) {
-      console.error('Error getting user posts:', err);
-      return [];
-    }
+    const response = await fetch(`${this.baseUrl}/posts`, {
+      headers: this.getHeaders()
+    });
+    if (!response.ok) return [];
+    const posts = await response.json();
+    return posts.map(post => ({
+      ...post,
+      userId: post.user_id,
+      postImages: post.post_images,
+      postVideos: post.post_videos,
+      userName: post.username,
+      userPhoto: post.user_photo
+    }));
   }
 
   async deletePost(id) {
-    try {
-      await remove(ref(rtDb, `posts/${id}`));
-      return true;
-    } catch (err) {
-      console.error('Error deleting post:', err);
-      return false;
-    }
+    const response = await fetch(`${this.baseUrl}/posts/${id}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+    return response.ok;
   }
 
-  async deletePostsByUser(uid) {
-    try {
-      const snapshot = await get(ref(rtDb, 'posts'));
-      if (!snapshot.exists()) return true;
-
-      const updates = {};
-      snapshot.forEach((child) => {
-        if (child.val().userId === uid) {
-          updates[`posts/${child.key}`] = null;
-        }
-      });
-      await update(ref(rtDb), updates);
-      return true;
-    } catch (err) {
-      console.error('Error deleting user posts:', err);
-      return false;
-    }
+  async deletePostsByUser(userId) {
+    const response = await fetch(`${this.baseUrl}/posts/user/${userId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+    return response.ok;
   }
 
   // --- AD METHODS ---
   async saveAd(ad) {
-    try {
-      const id = ad.id || push(ref(rtDb, 'ads')).key;
-      const adRef = ref(rtDb, `ads/${id}`);
-      const dataToSave = {
-        ...ad,
-        id,
-        timestamp: ad.timestamp || new Date().toISOString()
-      };
-      await set(adRef, dataToSave);
-      return dataToSave;
-    } catch (err) {
-      console.error('Error saving ad:', err);
-      return ad;
-    }
+    const response = await fetch(`${this.baseUrl}/ads`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(ad)
+    });
+    return response.ok ? await response.json() : null;
   }
 
   async getAds() {
-    try {
-      const snapshot = await get(ref(rtDb, 'ads'));
-      if (!snapshot.exists()) return [];
-      const ads = [];
-      snapshot.forEach((child) => {
-        ads.push(child.val());
-      });
-      return ads.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    } catch (err) {
-      console.error('Error getting ads:', err);
-      return [];
-    }
+    const response = await fetch(`${this.baseUrl}/ads`, {
+      headers: this.getHeaders()
+    });
+    if (!response.ok) return [];
+    const ads = await response.json();
+    return ads.map(ad => {
+      let parsedLocations = [];
+      try {
+        parsedLocations = typeof ad.target_locations === 'string' ? JSON.parse(ad.target_locations) : (ad.target_locations || []);
+      } catch (e) { }
+
+      return {
+        ...ad,
+        startDate: ad.start_date,
+        endDate: ad.end_date,
+        image: ad.image_url,
+        runMode: ad.run_mode,
+        targetLocations: parsedLocations
+      };
+    });
   }
 
   async deleteAd(id) {
-    try {
-      await remove(ref(rtDb, `ads/${id}`));
-      return true;
-    } catch (err) {
-      console.error('Error deleting ad:', err);
-      return false;
-    }
+    const response = await fetch(`${this.baseUrl}/ads/${id}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+    return response.ok;
   }
 
   // --- FEEDBACK METHODS ---
-  async saveFeedback(feedback) {
-    try {
-      const id = push(ref(rtDb, 'feedbacks')).key;
-      const feedbackRef = ref(rtDb, `feedbacks/${id}`);
-      const dataToSave = {
-        ...feedback,
-        id,
-        timestamp: new Date().toISOString()
-      };
-      await set(feedbackRef, dataToSave);
-      return dataToSave;
-    } catch (err) {
-      console.error('Error saving feedback:', err);
-      return feedback;
-    }
+  async saveFeedback(feedbackData) {
+    const response = await fetch(`${this.baseUrl}/feedbacks`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(feedbackData)
+    });
+    return response.ok ? await response.json() : null;
   }
 
   async getAllFeedbacks() {
-    try {
-      const snapshot = await get(ref(rtDb, 'feedbacks'));
-      if (!snapshot.exists()) return [];
-      const feedbacks = [];
-      snapshot.forEach((child) => {
-        feedbacks.push(child.val());
-      });
-      return feedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    } catch (err) {
-      console.error('Error getting feedbacks:', err);
-      return [];
-    }
+    const response = await fetch(`${this.baseUrl}/feedbacks`, {
+      headers: this.getHeaders()
+    });
+    return response.ok ? await response.json() : [];
   }
 
   // --- NOTIFICATION METHODS ---
-  async saveNotification(notification) {
-    try {
-      const id = notification.id || push(ref(rtDb, 'notifications')).key;
-      const notifRef = ref(rtDb, `notifications/${id}`);
-      const now = new Date().toISOString();
-      const dataToSave = {
-        ...notification,
-        id,
-        createdAt: notification.createdAt || now,
-        updatedAt: now
-      };
-      await set(notifRef, dataToSave);
-      return dataToSave;
-    } catch (err) {
-      console.error('Error saving notification:', err);
-      return notification;
-    }
-  }
-
   async getNotifications() {
-    try {
-      const snapshot = await get(ref(rtDb, 'notifications'));
-      if (!snapshot.exists()) return [];
-      const notifications = [];
-      snapshot.forEach((child) => {
-        notifications.push(child.val());
-      });
-      return notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    } catch (err) {
-      console.error('Error getting notifications:', err);
-      return [];
-    }
+    const response = await fetch(`${this.baseUrl}/notifications`, {
+      headers: this.getHeaders()
+    });
+    return response.ok ? await response.json() : [];
   }
 
-  async updateNotification(id, updates) {
-    try {
-      const notifRef = ref(rtDb, `notifications/${id}`);
-      const dataToUpdate = {
-        ...updates,
-        updatedAt: new Date().toISOString()
-      };
-      await update(notifRef, dataToUpdate);
-      const snapshot = await get(notifRef);
-      return snapshot.val();
-    } catch (err) {
-      console.error('Error updating notification:', err);
-      return null;
-    }
+  async saveNotification(notification) {
+    const response = await fetch(`${this.baseUrl}/notifications`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify(notification)
+    });
+    return response.ok ? await response.json() : null;
+  }
+
+  async updateNotification(id, data) {
+    const response = await fetch(`${this.baseUrl}/notifications/${id}`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update notification');
+    return await response.json();
   }
 
   async deleteNotification(id) {
-    try {
-      await remove(ref(rtDb, `notifications/${id}`));
-      return true;
-    } catch (err) {
-      console.error('Error deleting notification:', err);
-      return false;
-    }
-  }
-
-  async deleteUser(uid) {
-    if (!uid) {
-      throw new Error('User ID is required for deletion');
-    }
-
-    try {
-      console.log(`[Database] Deleting user: ${uid}`);
-
-      // Delete user from Firebase Realtime Database
-      await remove(ref(rtDb, `users/${uid}`));
-      console.log(`[Database] User ${uid} removed from database`);
-
-      // Delete all posts by this user
-      await this.deletePostsByUser(uid);
-      console.log(`[Database] Posts deleted for user ${uid}`);
-
-      return true;
-    } catch (err) {
-      console.error(`[Database] Error deleting user ${uid}:`, err);
-      throw err; // Throw error instead of returning false
-    }
-  }
-
-
-  // --- ADMIN MASTER DATA METHODS (PostgreSQL Migration) ---
-  async getMasterData() {
-    const API_BASE_URL = 'http://localhost:5006/api/master-data';
-    try {
-      console.log(`[Database] Fetching master data from ${API_BASE_URL}...`);
-      const [locationsRes, citiesRes, categoriesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/locations`),
-        fetch(`${API_BASE_URL}/cities`),
-        fetch(`${API_BASE_URL}/categories`)
-      ]);
-
-      if (!locationsRes.ok || !citiesRes.ok || !categoriesRes.ok) {
-        throw new Error(`API failed: Locations(${locationsRes.status}), Cities(${citiesRes.status}), Categories(${categoriesRes.status})`);
-      }
-      const locationRows = await locationsRes.json();
-      const citiesData = await citiesRes.json();
-      const categoriesData = await categoriesRes.json();
-
-      // Transform location flat rows into intended hierarchy
-      const locations = {};
-      locationRows.forEach(row => {
-        const { state_name, district_name, constituency_name, mandal_name } = row;
-        if (!locations[state_name]) locations[state_name] = {};
-        if (!locations[state_name][district_name]) locations[state_name][district_name] = {};
-        if (!locations[state_name][district_name][constituency_name]) locations[state_name][district_name][constituency_name] = [];
-        if (!locations[state_name][district_name][constituency_name].includes(mandal_name)) {
-          locations[state_name][district_name][constituency_name].push(mandal_name);
-        }
-      });
-
-      const categories = categoriesData.map(item => item.name);
-      const cities = citiesData.map(item => item.name);
-
-      return { locations, categories, cities };
-    } catch (err) {
-      console.warn('PostgreSQL API error, falling back to Firebase:', err.message);
-      try {
-        const snapshot = await get(ref(rtDb, 'admin/masterData'));
-        return snapshot.exists() ? snapshot.val() : { locations: {}, categories: [], cities: [] };
-      } catch (fbErr) {
-        console.error('Firebase fallback failed:', fbErr);
-        return { locations: {}, categories: [], cities: [] };
-      }
-    }
-  }
-
-  async saveMasterData(data) {
-    // Note: Admin data additions handled via specific POST endpoints in server.js
-    // This method remains for backward compatibility or direct Firebase sync if needed.
-    try {
-      const masterDataRef = ref(rtDb, 'admin/masterData');
-      const dataToSave = {
-        ...data,
-        lastUpdated: new Date().toISOString()
-      };
-      await set(masterDataRef, dataToSave);
-      return dataToSave;
-    } catch (err) {
-      console.error('Error saving master data:', err);
-      return null;
-    }
-  }
-
-  // --- SESSION METHODS ---
-  async saveSession(sessionData) {
-    try {
-      const sessionRef = push(ref(rtDb, 'sessions'));
-      await set(sessionRef, {
-        ...sessionData,
-        timestamp: sessionData.timestamp || new Date().toISOString()
-      });
-      return true;
-    } catch (err) {
-      console.error('Error saving session:', err);
-      return false;
-    }
+    const response = await fetch(`${this.baseUrl}/notifications/${id}`, {
+      method: 'DELETE',
+      headers: this.getHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to delete notification');
+    return true;
   }
 }
+
 
 export const database = new DatabaseService();

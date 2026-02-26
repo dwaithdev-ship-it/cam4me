@@ -1,9 +1,9 @@
-﻿// Placeholder function for Ad Manager password change
+// Placeholder function for Ad Manager password change
 function handleChangeAdManagerPassword() {
   // TODO: Implement password change logic
   console.log('handleChangeAdManagerPassword called');
 }
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import emailjs from '@emailjs/browser'
 import './App.css'
 import { database } from './database'
@@ -17,12 +17,9 @@ import logoCamera from './assets/logo_camera.png'
 
 
 /** 
- * FIREBASE RESTORED - CONNECTED TO LIVE BACKEND 
+ * CONNECTED TO LOCAL POSTGRESQL BACKEND 
  */
-import { auth, db, getAdditionalUserInfo } from './firebase'
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updatePassword } from 'firebase/auth'
-import { doc, setDoc, deleteDoc, updateDoc, collection, query, where, onSnapshot, getDoc } from 'firebase/firestore'
-// Firestore only used for Auth if necessary, but all app data moves to database.js (SQLite)
+// Firebase removed completely. Using local database service for all operations.
 
 // Storage is still local for this iteration or uses Base64
 
@@ -46,13 +43,13 @@ const SUGGESTIONS_CSS = `
 
 
 // Authorized Accounts Configuration
-// ⚠️ In a real app, use Firebase Custom Claims or Firestore Roles for better security
+// Role-based access is enforced on the backend via JWT + role column
 const AUTHORIZED_ADMINS = ['dwaith.dev@gmail.com']
 const AUTHORIZED_MANAGERS = ['dwaith.dev@gmail.com']
 
 // --- MASTER DATA API CONFIGURATION ---
 // Change this to your server's IP (e.g., 'http://192.168.29.122:5000/api/master-data') if accessing from a different device
-const API_BASE_URL = 'http://localhost:5006/api/master-data';
+const API_BASE_URL = 'http://localhost:5000/api/master-data';
 
 function ensureAbsoluteUrl(url) {
   if (!url) return '';
@@ -132,6 +129,7 @@ function AppContent() {
   const [locationPermission, setLocationPermission] = useState('prompt')
   const [showCityList, setShowCityList] = useState(false)
   const [showCategoryList, setShowCategoryList] = useState(false)
+  const [previousScreen, setPreviousScreen] = useState('feed')
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
   const isSigningUpRef = useRef(false)
   const [preciselocation, setPreciseLocation] = useState(true)
@@ -194,6 +192,7 @@ function AppContent() {
   const [showUserNotificationsModal, setShowUserNotificationsModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showProfileImagePicker, setShowProfileImagePicker] = useState(false);
+  const [expandedPosts, setExpandedPosts] = useState({});
 
   // Master Data (Admin Configured)
   // Master Data (Admin Configured)
@@ -270,7 +269,7 @@ function AppContent() {
     }
   };
 
-  // Derived lists for dropdowns (mandals/villages from locations + independent cities)
+  // Derive city/category lists for dropdowns from master data
   const cities = [
     ...new Set([
       ...Object.values(masterData.locations || {}).flatMap(districts =>
@@ -280,7 +279,9 @@ function AppContent() {
       ),
       ...(masterData.cities || [])
     ])
-  ].sort();
+  ].filter(Boolean).sort();
+
+  const categories = (masterData.categories || []).filter(Boolean).sort();
 
   // Helper Functions
   const getRandomAd = () => {
@@ -291,17 +292,17 @@ function AppContent() {
 
     const activeAds = ads.filter(ad => {
       // 1. Time check
-      if (!ad.startDate || !ad.endDate) return true;
-      const isStarted = nowISO >= ad.startDate;
-      const isEnded = nowISO > ad.endDate;
-      if (!isStarted || isEnded) return false;
+      if (!ad.start_date || !ad.end_date) return true;
+      const startDate = new Date(ad.start_date);
+      const endDate = new Date(ad.end_date);
+      if (localNow < startDate || localNow > endDate) return false;
 
       // 2. Targeting
-      if (!ad.runMode || ad.runMode === 'all') return true;
-      if (ad.runMode === 'targeted') {
+      if (!ad.run_mode || ad.run_mode === 'all') return true;
+      if (ad.run_mode === 'targeted') {
         const userLoc = (selectedCity || profileData.city || formData.district || formData.state || '').toLowerCase();
         if (!userLoc) return true;
-        return (ad.targetLocations || []).some(loc => {
+        return (ad.target_locations || ad.targetLocations || []).some(loc => {
           const targetName = (loc.name || '').toLowerCase();
           return targetName && userLoc && (targetName.includes(userLoc) || userLoc.includes(targetName));
         });
@@ -311,36 +312,47 @@ function AppContent() {
 
     if (activeAds.length === 0) {
       // If no targeted ads, show any non-targeted ad if available
-      const nonTargetedAds = ads.filter(ad => !ad.runMode || ad.runMode === 'all');
+      const nonTargetedAds = ads.filter(ad => !ad.run_mode || ad.run_mode === 'all');
       if (nonTargetedAds.length > 0) {
         return nonTargetedAds[Math.floor(Math.random() * nonTargetedAds.length)];
       }
-      return ads[Math.floor(Math.random() * ads.length)];
+      return null;
     }
     return activeAds[Math.floor(Math.random() * activeAds.length)];
   };
 
+  const currentAd = useMemo(() => getRandomAd(), [ads, selectedCity, profileData.city]);
+
   const fetchCities = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/cities`);
+      // Use the main master-data endpoint which returns { locations, categories, cities }
+      const res = await fetch(`${API_BASE_URL}`);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
-      // API returns [{id, name}, ...], map to names string array
-      const cityNames = data.map(c => c.name);
-      setMasterData(prev => ({
-        ...prev,
-        cities: cityNames
-      }));
+      if (data && data.cities && data.cities.length > 0) {
+        setMasterData(prev => ({
+          ...prev,
+          cities: data.cities,
+          categories: data.categories && data.categories.length > 0 ? data.categories : prev.categories,
+          locations: data.locations || prev.locations
+        }));
+        return;
+      }
+      throw new Error('No cities in response');
     } catch (e) {
-      console.warn('Fetch cities from API failed, trying hardcoded fallback:', e.message);
+      console.warn('Fetch cities from API failed, using fallback:', e.message);
       // Hardcoded fallback for common cities in AP & TS
       const fallbackCities = [
         'Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Khammam', 'Ramagundam', 'Mahbubnagar', 'Nalgonda', 'Suryapet', 'Miryalaguda',
         'Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Rajahmundry', 'Kakinada', 'Tirupati', 'Anantapur', 'Kadapa', 'Eluru', 'Ongole', 'Nandyal', 'Machilipatnam', 'Adoni', 'Tenali'
       ].sort();
+      const fallbackCategories = [
+        'Education', 'Healthcare', 'Technology', 'Agriculture', 'Entertainment', 'Sports', 'Business', 'Politics', 'Travel', 'Food'
+      ].sort();
       setMasterData(prev => ({
         ...prev,
-        cities: fallbackCities
+        cities: prev.cities && prev.cities.length > 0 ? prev.cities : fallbackCities,
+        categories: prev.categories && prev.categories.length > 0 ? prev.categories : fallbackCategories
       }));
     }
   };
@@ -358,65 +370,36 @@ function AppContent() {
     }
   };
 
-  const fetchStates = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/locations/states`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const states = await res.json();
-      setAvailableStates(states);
-    } catch (e) {
-      console.warn('Fetch states from API failed, trying local fallback:', e.message);
-      const data = await fetchLocalLocationData();
-      if (data) {
-        setAvailableStates(Object.keys(data));
-      }
+  const fetchStates = () => {
+    if (masterData.locations) {
+      setAvailableStates(Object.keys(masterData.locations).sort());
     }
   };
 
-  const fetchDistricts = async (state) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/locations/districts?state=${encodeURIComponent(state)}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const districts = await res.json();
-      setAvailableDistricts(districts);
-    } catch (e) {
-      console.warn('Fetch districts from API failed, trying local fallback:', e.message);
-      const data = await fetchLocalLocationData();
-      if (data && data[state]) {
-        setAvailableDistricts(Object.keys(data[state]));
-      }
+  const fetchDistricts = (state) => {
+    if (masterData.locations && masterData.locations[state]) {
+      setAvailableDistricts(Object.keys(masterData.locations[state]).sort());
+    } else {
+      setAvailableDistricts([]);
     }
   };
 
-  const fetchConstituencies = async (district) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/locations/constituencies?district=${encodeURIComponent(district)}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const constituencies = await res.json();
-      setAvailableConstituencies(constituencies);
-    } catch (e) {
-      console.warn('Fetch constituencies from API failed, trying local fallback:', e.message);
-      const data = await fetchLocalLocationData();
-      if (data && formData.state && data[formData.state] && data[formData.state][district]) {
-        setAvailableConstituencies(Object.keys(data[formData.state][district]));
-      }
+  const fetchConstituencies = (district) => {
+    const s = formData.state;
+    if (masterData.locations && s && masterData.locations[s] && masterData.locations[s][district]) {
+      setAvailableConstituencies(Object.keys(masterData.locations[s][district]).sort());
+    } else {
+      setAvailableConstituencies([]);
     }
   };
 
-  const fetchMandals = async (constituency) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/locations/mandals?constituency=${encodeURIComponent(constituency)}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const mandals = await res.json();
-      setAvailableMandals(mandals);
-    } catch (e) {
-      console.warn('Fetch mandals from API failed, trying local fallback:', e.message);
-      const data = await fetchLocalLocationData();
-      if (data && formData.state && formData.district &&
-        data[formData.state] && data[formData.state][formData.district] &&
-        data[formData.state][formData.district][constituency]) {
-        setAvailableMandals(data[formData.state][formData.district][constituency]);
-      }
+  const fetchMandals = (constituency) => {
+    const s = formData.state;
+    const d = formData.district;
+    if (masterData.locations && s && d && masterData.locations[s] && masterData.locations[s][d] && masterData.locations[s][d][constituency]) {
+      setAvailableMandals([...(masterData.locations[s][d][constituency] || [])].sort());
+    } else {
+      setAvailableMandals([]);
     }
   };
 
@@ -426,6 +409,19 @@ function AppContent() {
       console.log('Fetching states...');
       fetchStates();
     }
+    if (currentScreen === 'search') {
+      // Ensure city and category data is loaded for dropdowns
+      fetchCities();
+      syncMasterData();
+    }
+    if (currentScreen === 'edit_profile') {
+      // Ensure dropdown data is available for edit profile
+      fetchStates();
+      syncMasterData();
+      if (formData.state) fetchDistricts(formData.state);
+      if (formData.district) fetchConstituencies(formData.district);
+      if (formData.constituency) fetchMandals(formData.constituency);
+    }
   }, [currentScreen]);
 
   // Device Initialization - Capture device ID and check registration on app mount
@@ -434,8 +430,7 @@ function AppContent() {
       try {
         console.log('[Device] Initializing device...');
 
-        // Wait a small bit for DB to be ready if needed
-        await new Promise(r => setTimeout(r, 500));
+        // No artificial delay — instant device recognition
 
         const devId = await getDeviceId();
         setDeviceId(devId);
@@ -468,11 +463,19 @@ function AppContent() {
     initializeDevice();
   }, [dbInitialized]); // Re-run when DB initialized
 
-  // Ensure states and cities are fetched on mount
+  // Ensure states and cities are fetched on mount and when masterData changes
   useEffect(() => {
-    fetchStates();
-    fetchCities();
+    syncMasterData();
   }, []);
+
+  useEffect(() => {
+    if (masterData.locations) {
+      fetchStates();
+      if (formData.state) fetchDistricts(formData.state);
+      if (formData.district) fetchConstituencies(formData.district);
+      if (formData.constituency) fetchMandals(formData.constituency);
+    }
+  }, [masterData]);
 
   const validateLocation = () => {
     if (!formData.name || !tempMobile || !formData.state || !formData.district || !formData.constituency || !formData.mandal) {
@@ -548,15 +551,13 @@ function AppContent() {
   const syncMasterData = async () => {
     try {
       const data = await database.getMasterData();
-      if (data && data.locations && Object.keys(data.locations).length > 0) {
+      if (data) {
         setMasterData(prev => ({
           ...prev,
-          locations: data.locations,
+          locations: data.locations || prev.locations,
           categories: data.categories && data.categories.length > 0 ? data.categories : prev.categories,
           cities: data.cities && data.cities.length > 0 ? data.cities : prev.cities
         }));
-      } else {
-        throw new Error('No location data received from database/API');
       }
       // Always ensure local JSON is loaded for the 'Quick Add' dropdown
       fetchLocalLocationData();
@@ -599,8 +600,37 @@ function AppContent() {
     try {
       const success = await database.initialize()
       setDbInitialized(success)
+
+      // Get device ID immediately for recognition
+      const devId = await getDeviceId();
+      setDeviceId(devId);
+      getDeviceIP();
+
       if (success) {
+        // 1. Check if user is already logged in locally
+        const token = localStorage.getItem('chatcam_token');
+        const cachedUserStr = localStorage.getItem('chatcam_user');
+
+        if (token && cachedUserStr) {
+          const user = JSON.parse(cachedUserStr);
+          setCurrentUser(user);
+          if (user.selected_city) setSelectedCity(user.selected_city);
+          if (user.selected_category) setSelectedCategory(user.selected_category);
+          setCurrentScreen('feed');
+        } else {
+          // 2. Not logged in, check device binding on backend
+          const regStatus = await checkDeviceRegistration(devId);
+          if (regStatus && regStatus.exists) {
+            // Existing device -> Navigate directly to Sign In page
+            setCurrentScreen('signin');
+          } else {
+            // New device/user -> Full onboarding flow
+            setCurrentScreen('welcome_mobile');
+          }
+        }
+
         await loadRecords()
+        await syncMasterData()
       }
     } catch (error) {
       console.error('Failed to initialize database:', error)
@@ -609,8 +639,9 @@ function AppContent() {
 
   const loadRecords = async () => {
     try {
-      const data = await database.getAllUsers()
-      setRecords(data)
+      const data = await database.getAllUsers();
+      // Map id to uid to support legacy frontend code
+      setRecords(data.map(u => ({ ...u, uid: u.id || u.uid })));
     } catch (error) {
       console.error('Failed to load records:', error)
     }
@@ -624,7 +655,7 @@ function AppContent() {
   }
 
   // -------------------------------------------------------------
-  // LOCAL STORAGE EFFECTS (Replaces Firebase Listeners)
+  // LOCAL STORAGE EFFECTS (JWT-based auth persistence)
   // -------------------------------------------------------------
 
   // 0. Initialize Database
@@ -665,193 +696,72 @@ function AppContent() {
     };
   }, []);
 
-  // 1. Auth Persistence (Firebase Auth + SQLite Data)
+  // 1. Auth Persistence (JWT + PostgreSQL Data)
   // 1. Auth Status Observer with Device Tracking
+  // 1. Auth Persistence & Sync
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // NON-BLOCKING: Update state immediately
-        setCurrentUser({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL
-        });
+    const checkAuth = async () => {
+      const token = localStorage.getItem('chatcam_token');
+      const cachedUser = localStorage.getItem('chatcam_user');
 
-        // Background info update (non-blocking)
-        getDeviceId().then(id => {
-          // just ensures it's fetched if needed in future
-        });
-        // deviceIP is handled by the background useEffect
-      } else {
-        setCurrentUser(null);
+      if (token && cachedUser) {
+        const user = JSON.parse(cachedUser);
+        setCurrentUser(user);
+
+        // Background profile sync
+        try {
+          const profile = await database.getProfile();
+          if (profile) {
+            setCurrentUser(profile);
+            localStorage.setItem('chatcam_user', JSON.stringify(profile));
+            applyProfileData(profile);
+
+            // Auto-navigate to feed for logged-in users
+            if (['welcome_mobile', 'signin', 'signup_options', 'terms'].includes(currentScreen)) {
+              setCurrentScreen('feed');
+            }
+            // If setup_completed is false, update it in background
+            if (!profile.setup_completed) {
+              database.updateProfile({ setup_completed: true }).catch(e => console.error('Setup update error:', e));
+            }
+          }
+        } catch (err) {
+          console.error("Auth sync error:", err);
+          // If token expired/invalid, logout
+          if (err.status === 401) handleLogout();
+        }
       }
+    };
+
+    checkAuth();
+  }, []);
+
+  const applyProfileData = (data) => {
+    setProfileData({
+      name: data.name || '',
+      photo: data.photo_url || null,
+      city: data.selected_city || '',
+      category: data.selected_category || '',
+      mobile: data.mobile || '',
+      village: data.village || '',
+      mandal: data.mandal || '',
+      constituency: data.constituency || '',
+      district: data.district || '',
+      state: data.state || ''
     });
-    return () => unsubscribe();
-  }, []);
-
-  // Reset/Close notification modal on auth change
-  useEffect(() => {
-    setShowUserNotificationsModal(false);
-  }, [currentUser]);
-
-  // 1b. Auth-Based Navigation & Profile Sync (Reactive)
-  // Background IP detection to avoid blocking auth flows
-  useEffect(() => {
-    getDeviceIP();
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const syncAndNavigate = async () => {
-      try {
-        console.log('[Auth] Syncing user data for:', currentUser.uid);
-
-        // 1. FAST CACHE CHECK (Zero latency UI)
-        const cached = localStorage.getItem(`cam4me_user_${currentUser.uid}`);
-        let data = cached ? JSON.parse(cached) : null;
-
-        if (data) {
-          console.log('[Auth] Found cached profile, immediate navigation triggered');
-          applyProfileData(data);
-          // Navigate immediately ONLY if on auth/onboarding screens and setup is complete
-          const authScreens = ['welcome_mobile', 'signin', 'signup_options', 'terms', 'profile_setup', 'forgot_password', 'location', 'search'];
-          if (data.setupCompleted && !isNewSignupFlow && !isSigningUpRef.current && authScreens.includes(currentScreen)) {
-            setCurrentScreen('feed');
-          }
-        }
-
-        // 2. REMOTE SYNC (Background)
-        const remoteData = await database.getUser(currentUser.uid);
-
-        // Parallel Task: Fetch posts in background
-        database.getUserPosts(currentUser.uid).then(posts => {
-          if (posts && posts.length > 0) setUserPost(posts[0]);
-        });
-
-        // Data Recovery: If local missing, try Firestore (Async backup)
-        data = remoteData;
-        if (!data) {
-          console.log("[Auth] User data missing in Realtime DB, checking Firestore...");
-          try {
-            const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-            if (userDoc.exists()) {
-              console.log("[Auth] Found backup in Firestore, restoring...");
-              data = userDoc.data();
-              database.saveUser(data); // Background save
-            }
-          } catch (cloudErr) {
-            console.warn("[Auth] Firestore fetch failed:", cloudErr);
-          }
-        }
-
-        if (data) {
-          // Cache it for next time
-          localStorage.setItem(`cam4me_user_${currentUser.uid}`, JSON.stringify(data));
-
-          const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
-          const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
-
-          // ONE DEVICE POLICY - Lock account to first device used (Skip for Admins/Managers)
-          const thisDevice = await getDeviceId();
-          const currentIP = deviceIP || '0.0.0.0'; // NON-BLOCKING FALLBACK
-
-          if (!isAdmin && !isManager && data.trustedDeviceId && data.trustedDeviceId !== thisDevice) {
-            console.warn(`[Auth] Device mismatch! Trusted: ${data.trustedDeviceId}, Current: ${thisDevice}`);
-            await signOut(auth);
-            alert("Security Alert: This account is locked to another device. You can only use it on the device where you registered.");
-            setCurrentScreen('welcome_mobile');
-            return;
-          }
-
-          // Update device info if changed (and if not locked)
-          const updatedData = {
-            ...data,
-            lastDeviceId: thisDevice,
-            lastIP: currentIP,
-            lastLoginTime: new Date().toISOString()
-          };
-
-          // If no trusted device yet (legacy users or first login), lock it now
-          if (!data.trustedDeviceId) {
-            updatedData.trustedDeviceId = thisDevice;
-          }
-
-          // Non-blocking metadata updates for speed
-          database.saveUser(updatedData).catch(e => console.warn(e));
-          setDoc(doc(db, 'users', currentUser.uid), updatedData, { merge: true }).catch(err => console.error(err));
-
-          applyProfileData(data);
-
-          // SMART NAVIGATION - Skip onboarding for returning users
-          const isReturningUser = hasCompletedOnboarding || data.hasCompletedOnboarding;
-
-          if (!isNewSignupFlow && !isSigningUpRef.current) {
-            // For returning users, skip directly to signup_options or feed
-            if (isReturningUser && currentScreen === 'welcome_mobile') {
-              console.log('[Auth] Returning user detected, skipping to signup_options');
-              setCurrentScreen('signup_options');
-            }
-            // Auto-navigate from auth screens
-            else if (['signin', 'terms', 'forgot_password', 'signup_options'].includes(currentScreen)) {
-              if (!isAdmin && !isManager) {
-                if (data.setupCompleted) {
-                  console.log('[Auth] Setup complete, navigating to feed');
-                  setCurrentScreen('feed');
-                } else if (data.termsAccepted) {
-                  setCurrentScreen('profile_setup');
-                } else {
-                  console.log('[Auth] Profile incomplete, navigating to terms');
-                  setCurrentScreen('terms');
-                }
-              } else if (data.setupCompleted) {
-                setCurrentScreen('feed');
-              }
-            }
-          }
-        } else {
-          // New User or Deleted Profile (Dangling Auth)
-          const isAdmin = AUTHORIZED_ADMINS.includes(currentUser.email);
-          const isManager = AUTHORIZED_MANAGERS.includes(currentUser.email);
-
-          if (!isAdmin && !isManager && !isSigningUpRef.current && !isNewSignupFlow) {
-            console.log('[Auth] Dangling auth session with no profile found. Signing out for safety.');
-            localStorage.removeItem(`cam4me_user_${currentUser.uid}`);
-            await signOut(auth);
-            setCurrentScreen('welcome_mobile');
-          } else if (!isAdmin && !isManager && !isSigningUpRef.current && ['signin', 'terms'].includes(currentScreen)) {
-            // Fallback for new users who are NOT yet in flow
-            setCurrentScreen('terms');
-          }
-        }
-      } catch (err) {
-        console.error("[Auth] Sync error:", err);
-      }
-    };
-
-    const applyProfileData = (data) => {
-      setProfileData(prev => ({
-        name: data.name || currentUser.displayName || prev.name || '',
-        photo: data.photo || currentUser.photoURL || prev.photo || null,
-        city: data.selectedCity || prev.city || '',
-        category: data.selectedCategory || prev.category || ''
-      }));
-      setFormData(prev => ({
-        ...prev,
-        name: data.name || currentUser.displayName || prev.name || '',
-        mobile: data.mobile || prev.mobile || '',
-        village: data.village || prev.village || '',
-        mandal: data.mandal || prev.mandal || '',
-        district: data.district || prev.district || '',
-        state: data.state || prev.state || ''
-      }));
-      setSelectedCity(data.selectedCity || '');
-      setSelectedCategory(data.selectedCategory || '');
-    };
-
-    syncAndNavigate();
-  }, [currentUser, currentScreen]);
+    setFormData(prev => ({
+      ...prev,
+      name: data.name || '',
+      mobile: data.mobile || '',
+      village: data.village || '',
+      mandal: data.mandal || '',
+      constituency: data.constituency || '',
+      district: data.district || '',
+      state: data.state || ''
+    }));
+    setSelectedCity(data.selected_city || '');
+    setSelectedCategory(data.selected_category || '');
+  };
 
   // Sync Post Text when entering 'newpost' screen
   const hasInitializedPostRef = useRef(false)
@@ -910,7 +820,7 @@ function AppContent() {
         setCommunityPosts(localPosts);
 
         if (currentUser) {
-          const myLastPost = localPosts.find(p => p.userId === currentUser.uid);
+          const myLastPost = localPosts.find(p => p.userId === (currentUser.id || currentUser.uid));
           if (myLastPost && JSON.stringify(myLastPost) !== JSON.stringify(userPost)) {
             setUserPost(myLastPost);
           } else if (!myLastPost && userPost) {
@@ -950,6 +860,7 @@ function AppContent() {
         mobile: profileData.mobile || '',
         village: profileData.village || '',
         mandal: profileData.mandal || '',
+        constituency: profileData.constituency || currentUser?.constituency || '',
         district: profileData.district || '',
         state: profileData.state || ''
       }));
@@ -1078,61 +989,40 @@ function AppContent() {
 
     try {
       const updatedData = {
-        uid: currentUser.uid,
-        email: currentUser.email,
-        lastScreen: screen,
-        setupCompleted: completed,
-        termsAccepted: true, // If we are saving session data beyond terms screen
+        last_screen: screen,
+        setup_completed: completed,
         name: profileData.name || formData.name || '',
-        photo: profileData.photo || null,
-        selectedCity,
-        selectedCategory,
+        photo_url: profileData.photo || null,
+        selected_city: selectedCity,
+        selected_category: selectedCategory,
         mobile: formData.mobile || '',
         village: formData.village || '',
         mandal: formData.mandal || '',
         district: formData.district || '',
-        state: formData.state || '',
-        lastUpdated: new Date().toISOString()
+        state: formData.state || ''
       }
 
-      await database.saveUser(updatedData);
-      console.log('Session data synced to Firebase');
+      await database.updateProfile(updatedData);
+      console.log('Session data synced to backend');
     } catch (err) {
-      console.error('Failed to sync session to Firebase:', err);
+      console.error('Failed to sync session:', err);
     }
   }
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      try {
-        await signOut(auth);
-        // State clearing handled by onAuthStateChanged
-        setAuthData({ email: '', password: '', confirmPassword: '' })
-        setProfileData({ name: '', photo: null })
-        setSelectedCity('')
-        setSelectedCategory('')
-        setFormData({ name: '', mobile: '', village: '', mandal: '', district: '', state: '' })
-        setLocationPermission('not-asked')
-        setUserPost(null)
-        setCommunityPosts([])
-        setPostText('')
-        setPostImage(null)
-        setEditingPostId(null)
-        setIsEditing(true)
-        hasInitializedPostRef.current = false;
-        setIsNewSignupFlow(false);
-
-        // Clear onboarding status - user will go through full flow on next login
-        localStorage.removeItem('onboarding_complete');
-        setHasCompletedOnboarding(false);
-
-        setCurrentScreen('welcome_mobile')
-        alert('You have been logged out successfully')
-      } catch (err) {
-        console.error("Logout Error:", err);
-      }
+      database.logout();
+      setCurrentUser(null);
+      setAuthData({ email: '', password: '', confirmPassword: '' });
+      setProfileData({ name: '', photo: null });
+      setSelectedCity('');
+      setSelectedCategory('');
+      setFormData({ name: '', mobile: '', village: '', mandal: '', district: '', state: '' });
+      setCommunityPosts([]);
+      setCurrentScreen('signin');
+      alert('You have been logged out successfully');
     }
-  }
+  };
 
   const handleAcceptTerms = async () => {
     console.log('[Terms] Accept clicked. isNewSignupFlow:', isNewSignupFlow);
@@ -1186,84 +1076,73 @@ function AppContent() {
   };
 
   const handleSignUp = async (e) => {
-    e.preventDefault()
-    if (authData.password !== authData.confirmPassword) return alert('Passwords do not match!')
+    e.preventDefault();
+    if (authData.password !== authData.confirmPassword) return alert('Passwords do not match!');
 
     try {
-      isSigningUpRef.current = true; // Set lock BEFORE auth change
-      const userCredential = await createUserWithEmailAndPassword(auth, authData.email, authData.password);
-      const user = userCredential.user;
+      isSigningUpRef.current = true;
+      const result = await database.register({
+        email: authData.email,
+        password: authData.password,
+        name: formData.name,
+        username: authData.email.split('@')[0],
+        device_id: deviceId
+      });
 
-      const userData = {
-        ...formData,
-        ...profileData,
-        uid: user.uid,
-        email: user.email,
-        setupCompleted: false,
-        termsAccepted: true,
-        hasCompletedOnboarding: false,
-        trustedDeviceId: await getDeviceId(),
-        lastDeviceId: await getDeviceId(),
-        lastIP: deviceIP || '0.0.0.0', // Use cached or fallback immediately
-        registrationDate: new Date().toISOString(),
-        lastLoginTime: new Date().toISOString()
-      };
-
-      // Save to Local SQLite (Actually Realtime DB here) - NON-BLOCKING for speed
-      database.saveUser(userData).catch(e => console.warn(e));
-
-      // Explicitly cache for immediate retrieval on navigation
-      localStorage.setItem(`cam4me_user_${user.uid}`, JSON.stringify(userData));
-
-      // Save to Cloud Firestore (Backup) - NON-BLOCKING for speed
-      setDoc(doc(db, 'users', user.uid), userData).catch(e => console.warn("Cloud save bg error:", e));
-
-      // Ensure profile name is waiting for them
-      setProfileData(prev => ({ ...prev, name: formData.name }));
-
-      setIsNewSignupFlow(true);
-      setCurrentScreen('profile_setup');
+      if (result.ok) {
+        // Auto-login after signup
+        const loginRes = await database.login(authData.email, authData.password, deviceId);
+        if (loginRes.ok) {
+          setCurrentUser(loginRes.user);
+          setIsNewSignupFlow(true);
+          setCurrentScreen('profile_setup');
+        }
+      } else {
+        alert(result.error || "Signup failed");
+      }
     } catch (error) {
-      isSigningUpRef.current = false; // Release lock on error
+      isSigningUpRef.current = false;
       console.error("Signup Error:", error);
       alert("Error creating account: " + error.message);
     }
-  }
+  };
 
   const handleSignIn = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, authData.email, authData.password);
-      const user = userCredential.user;
-
-      // Validate device access
-      if (deviceId) {
-        const validation = await database.validateUserDevice(user.uid, deviceId);
-        if (!validation.valid) {
-          // Device mismatch - block login
-          await auth.signOut(); // Sign out immediately
-          alert(validation.message);
-          return;
+      const result = await database.login(authData.email, authData.password, deviceId);
+      if (result.ok) {
+        setCurrentUser(result.user);
+        // Sync profile data immediately from login response
+        setProfileData(prev => ({
+          ...prev,
+          name: result.user.name || prev.name,
+        }));
+        // Background fetch of full profile data
+        database.getProfile().then(profile => {
+          if (profile) applyProfileData(profile);
+        }).catch(err => console.error('Profile sync error:', err));
+        // Existing user with matching device → always go to feed
+        // If setup_completed is falsy but user exists with device binding, mark as complete
+        if (!result.user.setup_completed) {
+          // Background update - mark setup as complete since they registered before
+          database.updateProfile({ setup_completed: true }).catch(err => console.error('Setup update error:', err));
+          result.user.setup_completed = true;
+          localStorage.setItem('chatcam_user', JSON.stringify(result.user));
         }
-      }
-
-      // Device matches or no device check - proceed with login
-      // Fetch user data to check if setup is complete
-      const userData = await database.getUser(user.uid);
-
-      if (userData && userData.setupCompleted) {
-        // User has completed setup - navigate to feed
-        console.log('[SignIn] Setup completed, navigating to feed');
         setCurrentScreen('feed');
       } else {
-        // User hasn't completed setup - let auth listener handle navigation
-        console.log('[SignIn] Setup not completed, auth listener will handle navigation');
+        if (result.error === 'Device Mismatch') {
+          alert('Device Mismatch: ' + result.message);
+        } else {
+          alert(result.error || "Login failed");
+        }
       }
     } catch (error) {
       console.error("Signin Error:", error);
       alert("Login failed: " + error.message);
     }
-  }
+  };
 
 
 
@@ -1279,23 +1158,23 @@ function AppContent() {
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
-    // For admin, we can still use local check for specific email BUT verify with Firebase Auth
-    // or just assume if they want to login as admin they must use the proper email.
-
-    // Let's use Firebase Auth to ensure it's the real owner of the email
     if (AUTHORIZED_ADMINS.includes(adminAuth.email)) {
       try {
-        await signInWithEmailAndPassword(auth, adminAuth.email, adminAuth.password);
-        // Pre-fetch data for immediate display
-        loadRecords();
-        syncMasterData();
-        setCurrentScreen('admin_dashboard');
+        const result = await database.login(adminAuth.email, adminAuth.password);
+        if (result.ok) {
+          setCurrentUser(result.user);
+          loadRecords();
+          syncMasterData();
+          setCurrentScreen('admin_dashboard');
+        } else {
+          alert('Admin Login Failed: ' + (result.error || 'Invalid credentials'));
+        }
       } catch (err) {
         console.error('Admin login error:', err);
-        alert("Admin Login Failed: " + (err.code || err.message) + "\nCheck the email/password or enable Email/Password sign-in in Firebase console.");
+        alert('Admin Login Failed: ' + err.message);
       }
     } else {
-      alert("Access Denied: Not an Admin Email");
+      alert('Access Denied: Not an Admin Email');
     }
   }
 
@@ -1371,9 +1250,7 @@ function AppContent() {
     }
 
     try {
-      // In a real app with Firebase, we would use a backend function or Admin SDK
-      // because the client can't update another user's password without their credentials.
-      // For this POC/Mobile simulation, we will simulate success.
+      // TODO: Implement proper password reset via OTP + backend endpoint
       console.log(`[ForgotPwd] Simulating password update to: ${newPassword}`);
       alert('Password updated successfully!');
       setResetStep('request');
@@ -1391,12 +1268,17 @@ function AppContent() {
 
     if (AUTHORIZED_MANAGERS.includes(adManagerAuth.email)) {
       try {
-        await signInWithEmailAndPassword(auth, adManagerAuth.email, adManagerAuth.password);
-        setCurrentScreen('ad_manager_dashboard');
-        alert(`Welcome Ad Manager: ${adManagerAuth.email}`);
+        const result = await database.login(adManagerAuth.email, adManagerAuth.password);
+        if (result.ok) {
+          setCurrentUser(result.user);
+          setCurrentScreen('ad_manager_dashboard');
+          alert(`Welcome Ad Manager: ${adManagerAuth.email}`);
+        } else {
+          alert('Login Failed: ' + (result.error || 'Invalid credentials'));
+        }
       } catch (err) {
         console.error('Ad Manager login error:', err);
-        alert("Login Failed: " + (err.code || err.message) + "\nCheck the email/password or enable Email/Password sign-in in Firebase console.");
+        alert('Login Failed: ' + err.message);
       }
     } else {
       alert('Access Denied: This account is not an Ad Manager.')
@@ -1405,24 +1287,14 @@ function AppContent() {
 
   const handleSendResetForAdmin = async () => {
     if (!adminAuth.email) return alert('Enter admin email first');
-    try {
-      await sendPasswordResetEmail(auth, adminAuth.email);
-      alert('Password reset email sent to ' + adminAuth.email);
-    } catch (err) {
-      console.error('Admin reset error:', err);
-      alert('Failed to send reset email: ' + (err.code || err.message));
-    }
+    // TODO: Implement proper password reset via backend
+    alert('Password reset is not yet implemented for local backend. Please use the database directly.');
   }
 
   const handleSendResetForManager = async () => {
     if (!adManagerAuth.email) return alert('Enter manager email first');
-    try {
-      await sendPasswordResetEmail(auth, adManagerAuth.email);
-      alert('Password reset email sent to ' + adManagerAuth.email);
-    } catch (err) {
-      console.error('Manager reset error:', err);
-      alert('Failed to send reset email: ' + (err.code || err.message));
-    }
+    // TODO: Implement proper password reset via backend
+    alert('Password reset is not yet implemented for local backend. Please use the database directly.');
   }
 
   const handleTakePhoto = async (e) => {
@@ -1462,7 +1334,36 @@ function AppContent() {
   }
 
   const handleProfileImageSelect = async (source) => {
-    setShowProfileImagePicker(false)
+    setShowProfileImagePicker(false);
+    
+    // Check if we're on the web platform
+    const isWeb = !window.Capacitor || window.Capacitor.getPlatform() === 'web';
+    
+    if (isWeb) {
+      // Web fallback: use standard HTML file input since Camera.getPhoto requires HTTPS/Secure Context
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      if (source === CameraSource.Camera) {
+          input.capture = 'environment';
+      }
+      
+      input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const compressed = await compressImage(e.target.result, 800, 0.7);
+            setProfileData({ ...profileData, photo: compressed });
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      
+      input.click();
+      return;
+    }
+
     try {
       const image = await Camera.getPhoto({
         quality: 70, // Compressed
@@ -1470,16 +1371,19 @@ function AppContent() {
         allowEditing: true,
         resultType: CameraResultType.DataUrl,
         source: source
-      })
+      });
 
       if (image && image.dataUrl) {
         const compressed = await compressImage(image.dataUrl, 800, 0.7);
         setProfileData({ ...profileData, photo: compressed });
       }
     } catch (error) {
-      console.error('Error taking photo:', error)
+      console.error('Error taking photo:', error);
+      if (error.message && !error.message.includes('User cancelled')) {
+        alert('Could not open camera/gallery. Please check permissions or try again.');
+      }
     }
-  }
+  };
 
   const handleProfileChange = (e) => {
     setProfileData({ ...profileData, [e.target.name]: e.target.value })
@@ -1500,6 +1404,7 @@ function AppContent() {
 
       // Save and navigate
       await saveSessionData('location');
+      setPreviousScreen('profile_setup');
       setCurrentScreen('location');
     } catch (err) {
       console.error('Error saving profile:', err);
@@ -1542,25 +1447,25 @@ function AppContent() {
 
   const handleSearchContinue = async () => {
     // Navigate to New Post creation after City/Category selection
-    if (selectedCity && selectedCategory) {
+    const finalCity = selectedCity || profileData.city;
+    const finalCategory = selectedCategory || profileData.category;
+
+    if (finalCity && finalCategory) {
       // Mark setup as complete
       if (currentUser) {
         const userData = {
-          uid: currentUser.uid,
-          selectedCity,
-          selectedCategory,
-          setupCompleted: true,
-          hasCompletedOnboarding: true,
-          lastDeviceId: await getDeviceId(),
-          lastIP: deviceIP || await getDeviceIP(),
-          lastLoginTime: new Date().toISOString()
+          selected_city: finalCity,
+          selected_category: finalCategory,
+          setup_completed: true,
+          last_ip: deviceIP || await getDeviceIP()
         };
 
-        await database.saveUser(userData);
-        setDoc(doc(db, 'users', currentUser.uid), userData, { merge: true }).catch(err => console.error(err));
+        await database.updateProfile(userData);
+        // Refresh local profile data too
+        setProfileData(prev => ({ ...prev, city: finalCity, category: finalCategory }));
       }
 
-      saveSessionData('feed')
+      saveSessionData('feed', true)
       setCurrentScreen('feed')
     } else {
       alert('Please select both City and Category')
@@ -1574,9 +1479,6 @@ function AppContent() {
 
     try {
       await database.saveFeedback({
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
-        userName: profileData.name || currentUser.displayName || 'Anonymous',
         message: feedbackMessage.trim()
       });
       alert("Thanks for submitting your feedback");
@@ -1602,11 +1504,21 @@ function AppContent() {
       alert(`Verification Code: ${newOtp}`);
       setChangePasswordStep('verify');
     } catch (err) {
-      alert("Error generating code: " + err.message);
+      console.error("Error generating code: " + err.message);
+      alert("Failed to generate verification code. Please try again.");
     } finally {
       setIsSendingOtp(false);
     }
   };
+
+  // Targeting Search Effect
+  useEffect(() => {
+    if (showLocationModal && tempLocation.name && tempLocation.name.length >= 1) {
+      fetchLocationSuggestions(tempLocation.name);
+    } else {
+      setLocationSuggestions([]);
+    }
+  }, [tempLocation.name, showLocationModal]);
 
   const handleChangePasswordSubmit = async (e) => {
     e.preventDefault();
@@ -1618,28 +1530,16 @@ function AppContent() {
     }
 
     try {
-      const { updatePassword } = await import('firebase/auth');
-      if (!auth.currentUser) return alert("Session expired. Please log in again.");
+      if (!currentUser) return alert("Session expired. Please log in again.");
 
-      // Attempt actual update
-      try {
-        await updatePassword(auth.currentUser, changePasswordData.newPassword);
+      const result = await database.changePassword(changePasswordData.newPassword);
+      if (result.ok) {
         alert("Password updated successfully!");
         setChangePasswordStep('request');
         setChangePasswordData({ newPassword: '', confirmPassword: '' });
         setCurrentScreen('menu');
-      } catch (innerErr) {
-        if (innerErr.code === 'auth/requires-recent-login') {
-          // Instead of blocking with a popup, we simulate a successful local save for the development POC
-          // This allows the user to continue without friction.
-          console.warn("[ChangePwd] Requires recent login. Simulating success for POC development.");
-          alert("Password updated successfully (Simulated for POC)!");
-          setChangePasswordStep('request');
-          setChangePasswordData({ newPassword: '', confirmPassword: '' });
-          setCurrentScreen('menu');
-        } else {
-          throw innerErr;
-        }
+      } else {
+        alert("Failed to update password: " + (result.error || 'Unknown error'));
       }
     } catch (err) {
       console.error("Change Password Error:", err);
@@ -1665,7 +1565,7 @@ function AppContent() {
 
       // Calculate unread count for user
       if (currentUser && data && data.length > 0) {
-        const storageKey = `read_notifications_${currentUser.uid}`;
+        const storageKey = `read_notifications_${currentUser.id || currentUser.uid}`;
         const readIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
         // Filter for sent notifications that are not in readIds
         const validUnread = data.filter(n => n.status === 'sent' && !(readIds || []).includes(n.id));
@@ -1681,7 +1581,7 @@ function AppContent() {
   const markNotificationsAsRead = () => {
     if (!currentUser) return;
     const sentNotifications = notifications.filter(n => n.status === 'sent').map(n => n.id);
-    const storageKey = `read_notifications_${currentUser.uid}`;
+    const storageKey = `read_notifications_${currentUser.id || currentUser.uid}`;
     const existingRead = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const newRead = [...new Set([...existingRead, ...sentNotifications])];
     localStorage.setItem(storageKey, JSON.stringify(newRead));
@@ -1834,7 +1734,6 @@ function AppContent() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // If in new signup flow, we might not have a currentUser yet
     if (isNewSignupFlow && !currentUser) {
       setCurrentScreen('signup_options');
       return;
@@ -1846,12 +1745,10 @@ function AppContent() {
       // Upload profile photo to ImageKit
       let photoUrl = profileData.photo;
       if (photoUrl && photoUrl.startsWith('data:')) {
-        photoUrl = await uploadFile(photoUrl, `profile_${currentUser.uid}.jpg`, 'users');
+        photoUrl = await uploadFile(photoUrl, `profile_${currentUser.id}.jpg`, 'users');
       }
 
       const userData = {
-        uid: currentUser.uid,
-        email: currentUser.email,
         name: formData.name,
         mobile: formData.mobile,
         village: formData.village,
@@ -1859,13 +1756,13 @@ function AppContent() {
         constituency: formData.constituency,
         district: formData.district,
         state: formData.state,
-        photo: photoUrl,
-        selectedCity: profileData.city || selectedCity,
-        selectedCategory: profileData.category || selectedCategory,
-        deviceId: deviceId, // Lock user to this device
-        setupCompleted: true
+        photo_url: photoUrl,
+        selected_city: profileData.city || selectedCity,
+        selected_category: profileData.category || selectedCategory,
+        setup_completed: true
       };
-      await database.saveUser(userData);
+
+      await database.updateProfile(userData);
 
       // Update local state if needed
       if (photoUrl !== profileData.photo) {
@@ -2105,11 +2002,13 @@ function AppContent() {
       }
 
       const adData = {
-        ...adFormData,
-        image: finalAdImage,
-        createdBy: currentUser?.uid || 'unknown',
-        id: adFormData.id || Date.now(),
-        timestamp: new Date().toISOString()
+        image_url: finalAdImage,
+        text: adFormData.text,
+        link: adFormData.link,
+        start_date: adFormData.startDate,
+        end_date: adFormData.endDate,
+        run_mode: adFormData.runMode || 'all',
+        target_locations: adFormData.targetLocations || []
       }
       console.log('[DEBUG] About to save adData', adData);
       // 2. Save to PostgreSQL
@@ -2136,7 +2035,7 @@ function AppContent() {
 
       // Upload profile photo if needed
       if (finalProfilePhoto && finalProfilePhoto.startsWith('data:')) {
-        finalProfilePhoto = await uploadFile(finalProfilePhoto, `profile_${currentUser.uid}.jpg`, 'users');
+        finalProfilePhoto = await uploadFile(finalProfilePhoto, `profile_${currentUser.id}.jpg`, 'users');
         setProfileData(prev => ({ ...prev, photo: finalProfilePhoto }));
       }
 
@@ -2167,30 +2066,30 @@ function AppContent() {
       }
 
       const postData = {
-        id: editingPostId || Date.now(),
-        userId: currentUser.uid,
-        userName: profileData.name || 'User',
-        userPhoto: finalProfilePhoto,
-        postImages: uploadedImages,
-        postVideos: uploadedVideos,
         message: postText,
-        city: profileData.city || '',
-        category: profileData.category || '',
-        mobile: formData.mobile || tempMobile || '',
-        village: formData.village || '',
-        district: formData.district || '',
-        state: formData.state || '',
-        timestamp: new Date().toISOString(),
-        likes: []
+        post_images: uploadedImages,
+        post_videos: uploadedVideos,
       }
 
       setUploadProgress(95);
 
       // Save to PostgreSQL 'posts'
-      await database.savePost(postData);
+      const savedPost = await database.savePost(postData);
 
       // Update local state
-      setUserPost(postData);
+      if (savedPost) {
+        setUserPost({
+          ...savedPost,
+          userName: currentUser.username || currentUser.name,
+          userPhoto: currentUser.photo_url || currentUser.photo,
+          mobile: currentUser.mobile,
+          city: currentUser.selected_city || (profileData && profileData.city),
+          category: currentUser.selected_category || (profileData && profileData.category),
+          state: currentUser.state || (profileData && profileData.state),
+          district: currentUser.district || (profileData && profileData.district),
+          village: currentUser.village || (profileData && profileData.village)
+        });
+      }
 
       // Reset form
       setPostText('');
@@ -2850,7 +2749,6 @@ function AppContent() {
   }
   // 6th Screen: Profile Page (Setup)
   if (currentScreen === 'profile_setup') {
-    const currentAd = getRandomAd()
     const allCitiesFromII = cities;
     // Photo, City and Category are mandatory for continuation
     const canContinue = !!profileData.photo && !!profileData.city && !!profileData.category;
@@ -2871,8 +2769,17 @@ function AppContent() {
                 onClick={() => currentAd.targetUrl && window.open(ensureAbsoluteUrl(currentAd.targetUrl), '_blank')}
                 style={{ cursor: 'pointer', position: 'relative', width: '100%' }}
               >
-                <div style={{ width: '100%', height: '150px', position: 'relative' }}>
-                  <img src={currentAd.imageUrl || currentAd.image} alt="Ad" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{ width: '100%', height: '150px', position: 'relative', background: '#222' }}>
+                  <img
+                    src={currentAd.image_url || currentAd.imageUrl || currentAd.image}
+                    alt="Ad"
+                    loading="eager"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentNode.style.background = 'linear-gradient(45deg, #1a1a1a, #333)';
+                    }}
+                  />
                   <span style={{ position: 'absolute', top: '8px', right: '10px', color: 'white', fontSize: '10px', fontWeight: 'bold', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '5px', zIndex: 10 }}>Ad</span>
                 </div>
                 {currentAd.text && (
@@ -3275,7 +3182,7 @@ function AppContent() {
                   console.log('[ProfileSetup] Continue clicked. currentUser:', currentUser?.uid);
 
                   // Ensure we have a user
-                  const user = currentUser || auth.currentUser;
+                  const user = currentUser;
 
                   if (user) {
                     const finalData = {
@@ -3297,20 +3204,21 @@ function AppContent() {
                     };
 
                     // OPTIMISTIC NAVIGATION: Transition immediately
+                    setPreviousScreen('profile_setup');
                     setCurrentScreen('location');
                     setHasCompletedOnboarding(true);
                     localStorage.setItem('onboarding_complete', 'true');
                     localStorage.setItem(`cam4me_user_${user.uid}`, JSON.stringify(finalData));
 
-                    // Background saves (non-blocking)
+                    // Background saves (non-blocking) via Postgres API
                     database.saveUser(finalData).catch(navErr => console.error('[ProfileSetup] DB Error:', navErr));
-                    setDoc(doc(db, 'users', user.uid), finalData, { merge: true }).catch(navErr => console.error('[ProfileSetup] Cloud Error:', navErr));
 
                     // Update state
                     setProfileData(prev => ({ ...prev, ...finalData }));
                   } else {
                     console.warn('[ProfileSetup] No user found for save');
                     // Fallback for demo or if something went wrong with auth state but we have data
+                    setPreviousScreen('profile_setup');
                     setCurrentScreen('location');
                   }
                 }}
@@ -3778,7 +3686,6 @@ function AppContent() {
       </div>
     )
   }
-
   // City and Category Search Screen
   if (currentScreen === 'search') {
     const topAd = getRandomAd()
@@ -3790,133 +3697,143 @@ function AppContent() {
           <span className="time">{time}</span>
         </div>
 
-        <div className="content search-content">
-          <div className="profile-logo-small">
-            <img src="/cam4me_logo.png" alt="Chatcam" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+        <div className="content search-content" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', padding: '10px', gap: '10px', overflow: 'hidden', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginBottom: '2px' }}>
+            <button
+              onClick={() => {
+                if (previousScreen === 'profile_setup') {
+                  setCurrentScreen('location');
+                } else if (previousScreen === 'menu') {
+                  setCurrentScreen('menu');
+                } else {
+                  setCurrentScreen(previousScreen || 'feed');
+                }
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                padding: '0',
+                display: 'flex',
+                alignItems: 'center',
+                position: 'absolute',
+                left: '10px',
+                top: '45px',
+                zIndex: 10
+              }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+              </svg>
+            </button>
+            <div className="profile-logo-small" style={{ textAlign: 'center', width: '100%' }}>
+              <img src="/cam4me_logo.png" alt="Chatcam" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+            </div>
           </div>
 
-          <div className="ad-banner search-ad-top">
-            <span className="ad-label">Ad</span>
-            {topAd ? (
-              <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                <a
-                  href={ensureAbsoluteUrl(topAd.link)}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => { if (!topAd.link) e.preventDefault() }}
-                  style={{ display: 'block', width: '100%' }}
-                >
-                  <img src={topAd.image} alt="Advertisement" className="ad-image-main" />
-                </a>
+          {/* Top Ad - Fixed 16:9 ratio */}
+          {topAd && (
+            <div className="ad-banner search-ad-top" style={{
+              width: '100%',
+              height: 'auto',
+              aspectRatio: '16/9',
+              position: 'relative',
+              overflow: 'hidden',
+              borderRadius: '12px',
+              background: '#000',
+              flexShrink: 0
+            }}>
+              <span className="ad-label" style={{ position: 'absolute', top: '5px', right: '5px', zIndex: 10, background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff' }}>Ad</span>
+              <a href={ensureAbsoluteUrl(topAd.link)} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+                <img src={topAd.image_url || topAd.image} alt="Advertisement" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 {topAd.text && (
-                  <div className="ad-text-container">
-                    <p className="ad-text">{topAd.text}</p>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>
+                    {topAd.text}
                   </div>
                 )}
-              </div>
-            ) : (
-              <div style={{ width: '100%' }}>
-                <img
-                  src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&q=80"
-                  alt="Advertisement"
-                  className="ad-image-main"
-                />
-                <div className="ad-text-container">
-                  <p className="ad-text">Promote your business here!</p>
-                </div>
-              </div>
-            )}
-          </div>
+              </a>
+            </div>
+          )}
 
-          <div className="search-buttons">
-            <div className="search-btn-container">
+          <div className="search-buttons" style={{ display: 'flex', gap: '15px', margin: '5px 0', flexShrink: 0 }}>
+            <div className="search-btn-container" style={{ flex: 1, position: 'relative' }}>
               <button
                 className={`search-btn city-btn ${showCityList ? 'expanded' : ''}`}
                 onClick={() => setShowCityList(!showCityList)}
+                style={{ width: '100%', padding: '15px 10px', borderRadius: '12px', background: 'linear-gradient(135deg, #00F5FF 0%, #0099CC 100%)', color: 'white', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,245,255,0.3)' }}
               >
-                <span>{selectedCity || 'City'}</span>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                </svg>
+                <span>{selectedCity || profileData.city || 'City'}</span>
               </button>
               {showCityList && (
-                <div className="dropdown-list city-list">
-                  {cities.map((city, index) => (
-                    <div
-                      key={index}
-                      className={`dropdown-item ${selectedCity === city ? 'selected' : ''}`}
-                      onClick={() => handleCitySelect(city)}
-                    >
+                <div className="dropdown-list city-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, maxHeight: '200px', overflowY: 'auto', borderRadius: '0 0 12px 12px', background: 'rgba(20,30,50,0.98)' }}>
+                  {cities.length > 0 ? cities.map((city, index) => (
+                    <div key={index} className={`dropdown-item ${selectedCity === city ? 'selected' : ''}`} onClick={() => handleCitySelect(city)} style={{ padding: '12px 16px', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
                       {city}
                     </div>
-                  ))}
+                  )) : (
+                    <div style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>Loading cities...</div>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="search-btn-container">
+            <div className="search-btn-container" style={{ flex: 1, position: 'relative' }}>
               <button
                 className={`search-btn category-btn ${showCategoryList ? 'expanded' : ''}`}
                 onClick={() => setShowCategoryList(!showCategoryList)}
+                style={{ width: '100%', padding: '15px 10px', borderRadius: '12px', background: 'linear-gradient(135deg, #FF00FF 0%, #8B2E5E 100%)', color: 'white', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,0,255,0.3)' }}
               >
-                <span>{selectedCategory || 'Category'}</span>
+                <span>{selectedCategory || profileData.category || 'Category'}</span>
               </button>
               {showCategoryList && (
-                <div className="dropdown-list category-list">
-                  {adminMasterData.categories.map((category, index) => (
-                    <div
-                      key={index}
-                      className={`dropdown-item ${selectedCategory === category ? 'selected' : ''}`}
-                      onClick={() => handleCategorySelect(category)}
-                    >
+                <div className="dropdown-list category-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, maxHeight: '200px', overflowY: 'auto', borderRadius: '0 0 12px 12px', background: 'rgba(20,30,50,0.98)' }}>
+                  {categories.length > 0 ? categories.map((category, index) => (
+                    <div key={index} className={`dropdown-item ${selectedCategory === category ? 'selected' : ''}`} onClick={() => handleCategorySelect(category)} style={{ padding: '12px 16px', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
                       {category}
                     </div>
-                  ))}
+                  )) : (
+                    <div style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>Loading categories...</div>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {selectedCity && selectedCategory && (
-            <button className="search-continue-btn" onClick={handleSearchContinue}>
-              Continue
-            </button>
-          )}
-
-          <div className="ad-banner search-ad-bottom">
-            <span className="ad-label">Ad</span>
-            {bottomAd ? (
-              <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                <a
-                  href={ensureAbsoluteUrl(bottomAd.link)}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={(e) => { if (!bottomAd.link) e.preventDefault() }}
-                  style={{ display: 'block', width: '100%' }}
-                >
-                  <img src={bottomAd.image} alt="Advertisement" className="ad-image-main" />
-                </a>
-                {bottomAd.text && (
-                  <div className="ad-text-container">
-                    <p className="ad-text">{bottomAd.text}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ width: '100%' }}>
-                <img
-                  src="https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?w=800&q=80"
-                  alt="Advertisement"
-                  className="ad-image-main"
-                />
-                <div className="ad-text-container">
-                  <p className="ad-text">Advertise your services globally.</p>
-                </div>
-              </div>
+          <div style={{ padding: '0', flexShrink: 0 }}>
+            {(selectedCity || profileData.city) && (selectedCategory || profileData.category) && (
+              <button className="search-continue-btn" onClick={handleSearchContinue} style={{ width: '100%', padding: '15px', borderRadius: '12px', background: '#00F5FF', color: '#001f3f', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,245,255,0.5)' }}>
+                Continue
+              </button>
             )}
           </div>
+
+          {/* Bottom Ad - Fixed 16:9 ratio */}
+          {bottomAd && (
+            <div className="ad-banner search-ad-bottom" style={{
+              width: '100%',
+              height: 'auto',
+              aspectRatio: '16/9',
+              position: 'relative',
+              overflow: 'hidden',
+              borderRadius: '12px',
+              background: '#000',
+              marginTop: 'auto',
+              flexShrink: 0
+            }}>
+              <span className="ad-label" style={{ position: 'absolute', top: '5px', right: '5px', zIndex: 10, background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff' }}>Ad</span>
+              <a href={ensureAbsoluteUrl(bottomAd.link)} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+                <img src={bottomAd.image_url || bottomAd.image} alt="Advertisement" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {bottomAd.text && (
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>
+                    {bottomAd.text}
+                  </div>
+                )}
+              </a>
+            </div>
+          )}
         </div>
-      </div>
+      </div >
     )
   }
 
@@ -3963,7 +3880,7 @@ function AppContent() {
           fontSize: '22px',
           fontWeight: 'bold',
           margin: '5px 0 20px 0'
-        }}>New Post</h1>
+        }}>{userPost ? 'Edit Post' : 'New Post'}</h1>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px' }}>
           {/* User Info Bar */}
@@ -4125,7 +4042,7 @@ function AppContent() {
               opacity: (isPublishing || (!postText && postImages.length === 0 && postVideos.length === 0)) ? 0.4 : 1
             }}
           >
-            {isPublishing ? '...' : 'Post'}
+            {isPublishing ? '...' : (userPost ? 'Update' : 'Post')}
           </button>
         </div>
       </div>
@@ -4159,19 +4076,36 @@ function AppContent() {
                 value={adminAuth.email}
                 onChange={handleAdminAuthChange}
                 required
-                placeholder="Enter admin email"
+                placeholder="Enter emails"
               />
             </div>
 
             <div className="form-group">
               <label>Password</label>
-              <input
-                type="password"
-                name="password"
-                value={adminAuth.password}
-                onChange={handleAdminAuthChange}
-                required
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={adminAuth.password}
+                  onChange={handleAdminAuthChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.82l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.74-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" />
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button type="submit" className="auth-submit-btn" style={{ background: 'linear-gradient(to right, #FF4444, #CC0000)' }}>Login as Admin</button>
@@ -4217,19 +4151,36 @@ function AppContent() {
                 value={adManagerAuth.email}
                 onChange={handleAdManagerAuthChange}
                 required
-                placeholder="ads@cam4me.com"
+                placeholder="Enter email"
               />
             </div>
 
             <div className="form-group">
               <label>Password</label>
-              <input
-                type="password"
-                name="password"
-                value={adManagerAuth.password}
-                onChange={handleAdManagerAuthChange}
-                required
-              />
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={adManagerAuth.password}
+                  onChange={handleAdManagerAuthChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.82l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.74-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" />
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button type="submit" className="auth-submit-btn" style={{ background: 'linear-gradient(to right, #FFD700, #FFA500)' }}>Login as Manager</button>
@@ -4447,7 +4398,7 @@ function AppContent() {
                       onClick={() => {
                         setAdFormData({
                           id: ad.id,
-                          firebaseId: ad.firebaseId,
+                          // id is already set from ad.id above
                           image: ad.image,
                           text: ad.text || '',
                           link: ad.link || '',
@@ -4585,12 +4536,8 @@ function AppContent() {
                     const val = newCityInput.trim();
                     if (!val) return;
                     try {
-                      const res = await fetch(`${API_BASE_URL}/cities`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: val })
-                      });
-                      if (!res.ok) throw new Error('API failed');
+                      const ok = await database.saveCity(val);
+                      if (!ok) throw new Error('Action failed');
                       setNewCityInput('');
                       syncMasterData();
                     } catch (e) { alert('Failed: ' + e.message); }
@@ -4609,12 +4556,8 @@ function AppContent() {
                           e.stopPropagation();
                           if (window.confirm(`Delete city "${c}"?`)) {
                             try {
-                              const res = await fetch(`${API_BASE_URL}/cities`, {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ name: c })
-                              });
-                              if (!res.ok) throw new Error('API failed');
+                              const ok = await database.deleteCity(c);
+                              if (!ok) throw new Error('Action failed');
                               syncMasterData();
                             } catch (err) { alert('Failed: ' + err.message); }
                           }
@@ -4649,12 +4592,8 @@ function AppContent() {
                     const val = newCategoryInput.trim();
                     if (!val) return;
                     try {
-                      const res = await fetch(`${API_BASE_URL}/categories`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: val })
-                      });
-                      if (!res.ok) throw new Error('API failed');
+                      const ok = await database.saveCategory(val);
+                      if (!ok) throw new Error('Action failed');
                       setNewCategoryInput('');
                       syncMasterData();
                     } catch (e) { alert('Failed: ' + e.message); }
@@ -4673,12 +4612,8 @@ function AppContent() {
                           e.stopPropagation();
                           if (window.confirm(`Delete category "${cat}"?`)) {
                             try {
-                              const res = await fetch(`${API_BASE_URL}/categories`, {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ name: cat })
-                              });
-                              if (!res.ok) throw new Error('API failed');
+                              const ok = await database.deleteCategory(cat);
+                              if (!ok) throw new Error('Action failed');
                               syncMasterData();
                             } catch (err) { alert('Failed: ' + err.message); }
                           }
@@ -4711,12 +4646,8 @@ function AppContent() {
                   const s = newLocationInputs.state.trim();
                   if (!s) return;
                   try {
-                    const res = await fetch(`${API_BASE_URL}/locations`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ state_name: s, district_name: 'N/A', constituency_name: 'N/A', mandal_name: 'N/A' })
-                    });
-                    if (!res.ok) throw new Error('API failed');
+                    const ok = await database.saveLocation({ state_name: s, district_name: 'N/A', constituency_name: 'N/A', mandal_name: 'N/A' });
+                    if (!ok) throw new Error('Action failed');
                     setNewLocationInputs({ ...newLocationInputs, state: '' });
                     syncMasterData();
                   } catch (e) { alert('Failed: ' + e.message); }
@@ -4736,12 +4667,8 @@ function AppContent() {
                         e.stopPropagation();
                         if (window.confirm(`DELETE ENTIRE STATE "${st}" and all its districts/mandals?`)) {
                           try {
-                            const res = await fetch(`${API_BASE_URL}/locations`, {
-                              method: 'DELETE',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ state_name: st })
-                            });
-                            if (!res.ok) throw new Error('API failed');
+                            const ok = await database.deleteLocation({ state_name: st });
+                            if (!ok) throw new Error('Action failed');
                             syncMasterData();
                           } catch (err) { alert('Failed: ' + err.message); }
                         }
@@ -4768,13 +4695,8 @@ function AppContent() {
                           const d = newLocationInputs.district[st].trim();
                           if (!d) return;
                           try {
-                            // To add just a district, we use placeholders for deeper levels
-                            const res = await fetch(`${API_BASE_URL}/locations`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ state_name: st, district_name: d, constituency_name: 'N/A', mandal_name: 'N/A' })
-                            });
-                            if (!res.ok) throw new Error('API failed');
+                            const ok = await database.saveLocation({ state_name: st, district_name: d, constituency_name: 'N/A', mandal_name: 'N/A' });
+                            if (!ok) throw new Error('Action failed');
                             setNewLocationInputs({ ...newLocationInputs, district: { ...newLocationInputs.district, [st]: '' } });
                             syncMasterData();
                           } catch (e) { alert('Failed: ' + e.message); }
@@ -4794,12 +4716,8 @@ function AppContent() {
                                 e.stopPropagation();
                                 if (window.confirm(`Delete district "${dst}" in ${st}?`)) {
                                   try {
-                                    const res = await fetch(`${API_BASE_URL}/locations`, {
-                                      method: 'DELETE',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ state_name: st, district_name: dst })
-                                    });
-                                    if (!res.ok) throw new Error('API failed');
+                                    const ok = await database.deleteLocation({ state_name: st, district_name: dst });
+                                    if (!ok) throw new Error('Action failed');
                                     syncMasterData();
                                   } catch (err) { alert('Failed: ' + err.message); }
                                 }
@@ -4825,12 +4743,8 @@ function AppContent() {
                                   const c = newLocationInputs.constituency[dst].trim();
                                   if (!c) return;
                                   try {
-                                    const res = await fetch(`${API_BASE_URL}/locations`, {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: c, mandal_name: 'N/A' })
-                                    });
-                                    if (!res.ok) throw new Error('API failed');
+                                    const ok = await database.saveLocation({ state_name: st, district_name: dst, constituency_name: c, mandal_name: 'N/A' });
+                                    if (!ok) throw new Error('Action failed');
                                     setNewLocationInputs({ ...newLocationInputs, constituency: { ...newLocationInputs.constituency, [dst]: '' } });
                                     syncMasterData();
                                   } catch (e) { alert('Failed: ' + e.message); }
@@ -4851,12 +4765,8 @@ function AppContent() {
                                         e.stopPropagation();
                                         if (window.confirm(`Delete constituency "${constituency}"?`)) {
                                           try {
-                                            const res = await fetch(`${API_BASE_URL}/locations`, {
-                                              method: 'DELETE',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: constituency })
-                                            });
-                                            if (!res.ok) throw new Error('API failed');
+                                            const ok = await database.deleteLocation({ state_name: st, district_name: dst, constituency_name: constituency });
+                                            if (!ok) throw new Error('Action failed');
                                             syncMasterData();
                                           } catch (err) { alert('Failed: ' + err.message); }
                                         }
@@ -4883,12 +4793,8 @@ function AppContent() {
                                           const m = newLocationInputs.mandal[constituency].trim();
                                           if (!m) return;
                                           try {
-                                            const res = await fetch(`${API_BASE_URL}/locations`, {
-                                              method: 'POST',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: constituency, mandal_name: m })
-                                            });
-                                            if (!res.ok) throw new Error('API failed');
+                                            const ok = await database.saveLocation({ state_name: st, district_name: dst, constituency_name: constituency, mandal_name: m });
+                                            if (!ok) throw new Error('Action failed');
                                             setNewLocationInputs({ ...newLocationInputs, mandal: { ...newLocationInputs.mandal, [constituency]: '' } });
                                             syncMasterData();
                                           } catch (e) { alert('Failed: ' + e.message); }
@@ -4908,12 +4814,8 @@ function AppContent() {
                                                 e.stopPropagation();
                                                 if (window.confirm(`Delete mandal "${mandal}"?`)) {
                                                   try {
-                                                    const res = await fetch(`${API_BASE_URL}/locations`, {
-                                                      method: 'DELETE',
-                                                      headers: { 'Content-Type': 'application/json' },
-                                                      body: JSON.stringify({ state_name: st, district_name: dst, constituency_name: constituency, mandal_name: mandal })
-                                                    });
-                                                    if (!res.ok) throw new Error('API failed');
+                                                    const ok = await database.deleteLocation({ state_name: st, district_name: dst, constituency_name: constituency, mandal_name: mandal });
+                                                    if (!ok) throw new Error('Action failed');
                                                     syncMasterData();
                                                   } catch (err) { alert('Failed: ' + err.message); }
                                                 }
@@ -5066,7 +4968,7 @@ function AppContent() {
 
             {records.map((record) => {
               const userId = record.uid;
-              const isBlocked = (blockedUsers || []).includes(userId);
+              const isBlocked = record.role === 'disabled';
               const isSelected = selectedUids.includes(userId);
 
               return (
@@ -5110,20 +5012,16 @@ function AppContent() {
                       <button
                         onClick={async () => {
                           try {
-                            const uid = userId;
-                            let newBlocked;
-                            if (isBlocked) {
-                              newBlocked = blockedUsers.filter(id => id !== uid);
-                            } else {
-                              if (confirm('Are you sure you want to disable this user for suspicious activity?')) {
-                                newBlocked = [...blockedUsers, uid];
-                              } else {
-                                return;
-                              }
+                            const newRole = isBlocked ? 'user' : 'disabled';
+                            if (!isBlocked && !confirm('Are you sure you want to disable this user for suspicious activity?')) {
+                              return;
                             }
-                            await setDoc(doc(db, 'system', 'moderation'), { blockedUsers: newBlocked }, { merge: true });
-                            setBlockedUsers(newBlocked);
-                            localStorage.setItem('blockedUsers', JSON.stringify(newBlocked));
+
+                            // Call Database API to update status online
+                            await database.updateUserRole(userId, newRole);
+
+                            // Update local records immediately
+                            setRecords(prev => prev.map(r => r.uid === userId ? { ...r, role: newRole } : r));
                           } catch (err) {
                             alert("Failed to update status: " + err.message);
                           }
@@ -5146,8 +5044,6 @@ function AppContent() {
                           if (!confirm('Permanently delete this user account?')) return;
                           try {
                             await database.deleteUser(userId);
-                            await database.deletePostsByUser(userId);
-                            try { await deleteDoc(doc(db, 'users', userId)); } catch (e) { }
                             alert('User deleted successfully.');
                             loadRecords();
                           } catch (err) {
@@ -5702,20 +5598,17 @@ function AppContent() {
                     {locationSuggestions.map((s, i) => (
                       <div key={i} onClick={() => {
                         let type = 'Full Area';
-                        if (s.toLowerCase().includes('district')) type = 'Full District';
-                        if (s.toLowerCase().includes('state')) type = 'Full State';
-                        if (['india', 'usa', 'canada', 'australia'].includes(s.toLowerCase())) type = 'Full Country';
-                        if (['asia', 'europe'].includes(s.toLowerCase())) type = 'Full Continent';
-                        if (s.toLowerCase().includes('world')) type = 'Full World';
+                        if (s.type === 'district') type = 'Full District';
+                        if (s.type === 'state') type = 'Full State';
 
-                        setTempLocation({ ...tempLocation, name: s, region: type });
+                        setTempLocation({ ...tempLocation, name: s.name, region: type });
                         setLocationSuggestions([]);
                         const mapOverlay = document.querySelector('.map-scan-overlay');
                         if (mapOverlay) {
                           mapOverlay.style.opacity = '1';
                           setTimeout(() => { if (mapOverlay) mapOverlay.style.opacity = '0'; }, 300);
                         }
-                      }} style={{ padding: '12px 15px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', color: '#333' }}>{s}</div>
+                      }} style={{ padding: '12px 15px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', color: '#333' }}>{s.display}</div>
                     ))}
                   </div>
                 )}
@@ -6165,7 +6058,7 @@ function AppContent() {
     // Debug logging
     console.log("Rendering Menu Screen. Profile:", profileData);
 
-    const pName = profileData?.name || 'User';
+    const pName = profileData?.name || formData?.name || currentUser?.name || currentUser?.username || 'User';
     const pFirst = pName.charAt(0).toUpperCase();
     const pPhoto = profileData?.photo;
 
@@ -6221,7 +6114,7 @@ function AppContent() {
           {/* Menu Items */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
             {/* Change Location */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={() => setCurrentScreen('location')}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={() => { setPreviousScreen('menu'); setCurrentScreen('location'); }}>
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <span style={{ fontSize: '24px', color: '#00F5FF' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
@@ -6306,7 +6199,7 @@ function AppContent() {
 
 
   if (currentScreen === 'edit_profile') {
-    const pName = profileData?.name || 'User';
+    const pName = profileData?.name || formData?.name || currentUser?.name || currentUser?.username || 'User';
     const pPhoto = profileData?.photo;
 
     return (
@@ -6724,69 +6617,118 @@ function AppContent() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '15px' }}>
+              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>State</label>
+              <select
+                value={formData.state}
+                onChange={(e) => {
+                  const state = e.target.value;
+                  setFormData({ ...formData, state, district: '', constituency: '', mandal: '' });
+                  setAvailableDistricts([]);
+                  setAvailableConstituencies([]);
+                  setAvailableMandals([]);
+                  if (state) fetchDistricts(state);
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  color: 'white',
+                  width: '100%',
+                  fontSize: '16px'
+                }}
+              >
+                <option value="" style={{ color: 'black' }}>Select State</option>
+                {availableStates.map(s => <option key={s} value={s} style={{ color: 'black' }}>{s}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '15px' }}>
+              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>District name</label>
+              <select
+                value={formData.district}
+                onChange={(e) => {
+                  const district = e.target.value;
+                  setFormData({ ...formData, district, constituency: '', mandal: '' });
+                  setAvailableConstituencies([]);
+                  setAvailableMandals([]);
+                  if (district) fetchConstituencies(district);
+                }}
+                disabled={!formData.state}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  color: 'white',
+                  width: '100%',
+                  fontSize: '16px',
+                  opacity: formData.state ? 1 : 0.5
+                }}
+              >
+                <option value="" style={{ color: 'black' }}>Select District</option>
+                {availableDistricts.map(d => <option key={d} value={d} style={{ color: 'black' }}>{d}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '15px' }}>
+              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>Constituency</label>
+              <select
+                value={formData.constituency}
+                onChange={(e) => {
+                  const constituency = e.target.value;
+                  setFormData({ ...formData, constituency, mandal: '' });
+                  setAvailableMandals([]);
+                  if (constituency) fetchMandals(constituency);
+                }}
+                disabled={!formData.district}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  color: 'white',
+                  width: '100%',
+                  fontSize: '16px',
+                  opacity: formData.district ? 1 : 0.5
+                }}
+              >
+                <option value="" style={{ color: 'black' }}>Select Constituency</option>
+                {availableConstituencies.map(c => <option key={c} value={c} style={{ color: 'black' }}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '15px' }}>
+              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>Mandal name</label>
+              <select
+                value={formData.mandal}
+                onChange={(e) => {
+                  setFormData({ ...formData, mandal: e.target.value });
+                }}
+                disabled={!formData.constituency}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  color: 'white',
+                  width: '100%',
+                  fontSize: '16px',
+                  opacity: formData.constituency ? 1 : 0.5
+                }}
+              >
+                <option value="" style={{ color: 'black' }}>Select Mandal</option>
+                {availableMandals.map(m => <option key={m} value={m} style={{ color: 'black' }}>{m}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '30px' }}>
               <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>Village name</label>
               <input
                 type="text"
                 value={formData.village}
                 onChange={(e) => setFormData({ ...formData, village: e.target.value })}
                 placeholder="Enter village name"
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  color: 'white',
-                  width: '100%',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '15px' }}>
-              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>Mandal name</label>
-              <input
-                type="text"
-                value={formData.mandal}
-                onChange={(e) => setFormData({ ...formData, mandal: e.target.value })}
-                placeholder="Enter mandal name"
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  color: 'white',
-                  width: '100%',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '15px' }}>
-              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>District name</label>
-              <input
-                type="text"
-                value={formData.district}
-                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                placeholder="Enter district name"
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  color: 'white',
-                  width: '100%',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '30px' }}>
-              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', marginBottom: '8px', display: 'block' }}>State</label>
-              <input
-                type="text"
-                value={formData.state}
-                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                placeholder="Enter state"
                 style={{
                   background: 'rgba(255,255,255,0.1)',
                   border: '1px solid rgba(255,255,255,0.2)',
@@ -6811,7 +6753,6 @@ function AppContent() {
 
                   if (currentUser) {
                     await database.saveUser(updatedData);
-                    setDoc(doc(db, 'users', currentUser.uid), updatedData, { merge: true }).catch(err => console.error(err));
                     alert('Profile Updated Successfully');
                     setCurrentScreen('menu'); // Return to menu after save
                   }
@@ -6955,7 +6896,18 @@ function AppContent() {
                 </p>
               </div>
               <button
-                onClick={(e) => { e.stopPropagation(); setCurrentScreen('newpost'); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (userPost) {
+                    // Already has a post, go to edit mode instead
+                    setEditingPostId(userPost.id);
+                    setPostText(userPost.message);
+                    setPostImages(userPost.postImages || (userPost.postImage ? [userPost.postImage] : []));
+                    setPostVideos(userPost.postVideos || []);
+                    setIsEditing(true);
+                  }
+                  setCurrentScreen('newpost');
+                }}
                 style={{
                   width: '42px',
                   height: '42px',
@@ -6978,7 +6930,18 @@ function AppContent() {
             {/* Write Message Bar */}
             <div style={{ padding: '0 16px 25px' }}>
               <div
-                onClick={(e) => { e.stopPropagation(); setCurrentScreen('newpost'); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (userPost) {
+                    // Already has a post, go to edit mode instead
+                    setEditingPostId(userPost.id);
+                    setPostText(userPost.message);
+                    setPostImages(userPost.postImages || (userPost.postImage ? [userPost.postImage] : []));
+                    setPostVideos(userPost.postVideos || []);
+                    setIsEditing(true);
+                  }
+                  setCurrentScreen('newpost');
+                }}
                 style={{
                   background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.08)',
@@ -6989,7 +6952,7 @@ function AppContent() {
                   cursor: 'pointer'
                 }}
               >
-                Write message
+                {userPost ? 'Edit your message' : 'Write message'}
               </div>
             </div>
 
@@ -7057,24 +7020,67 @@ function AppContent() {
                       Edit
                     </button>
                   </div>
-                  <p style={{ color: 'white', fontSize: '15px', lineHeight: '1.6', margin: '0 0 15px 0' }}>{userPost.message}</p>
+                  {(() => {
+                    const isExpanded = expandedPosts[userPost.id || 'userpost'];
+                    const imgs = userPost.postImages || (userPost.postImage ? [userPost.postImage] : []);
+                    const vids = userPost.postVideos || [];
+                    const mediaCount = imgs.length + vids.length;
+                    const isLongText = userPost.message && userPost.message.length > 150;
+                    const needsExpand = mediaCount > 1 || isLongText;
 
-                  {/* Media attachments for own post */}
-                  {(userPost.postImages?.length > 0 || userPost.postImage || userPost.postVideos?.length > 0) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '15px' }}>
-                      {(userPost.postImages || (userPost.postImage ? [userPost.postImage] : [])).map((img, i) => (
-                        <img key={i} src={img} onClick={() => setFullScreenMedia({ type: 'image', url: img })} style={{ width: '100%', borderRadius: '12px', height: '140px', objectFit: 'cover', cursor: 'pointer' }} />
-                      ))}
-                      {(userPost.postVideos || []).map((vid, i) => (
-                        <div key={i} style={{ position: 'relative', height: '140px', cursor: 'pointer' }} onClick={() => setFullScreenMedia({ type: 'video', url: vid })}>
-                          <video src={vid} playsInline muted loop style={{ width: '100%', borderRadius: '12px', height: '140px', background: 'black', objectFit: 'cover' }} />
-                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', padding: '10px' }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    return (
+                      <div style={{ paddingBottom: '5px' }}>
+                        {userPost.message && (
+                          <p style={{
+                            color: 'white',
+                            fontSize: '15px',
+                            lineHeight: '1.6',
+                            margin: '0 0 10px 0',
+                            ...(!isExpanded && isLongText ? {
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            } : {})
+                          }}>
+                            {userPost.message}
+                          </p>
+                        )}
+
+                        {mediaCount > 0 && (
+                          <div style={{
+                            display: isExpanded ? 'flex' : 'grid',
+                            flexDirection: 'column',
+                            gridTemplateColumns: isExpanded ? 'none' : 'repeat(auto-fit, minmax(130px, 1fr))',
+                            gap: '10px',
+                            marginBottom: '10px'
+                          }}>
+                            {imgs.slice(0, isExpanded ? imgs.length : (mediaCount > 1 ? 1 : imgs.length)).map((img, i) => (
+                              <img key={i} src={img} onClick={() => setFullScreenMedia({ type: 'image', url: img })}
+                                   style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                            ))}
+                            {vids.slice(0, isExpanded ? vids.length : (imgs.length === 0 ? 1 : 0)).map((vid, i) => (
+                              <div key={i} style={{ position: 'relative', width: '100%', cursor: 'pointer' }} onClick={() => setFullScreenMedia({ type: 'video', url: vid })}>
+                                <video src={vid} playsInline muted loop style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', background: 'black', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover' }} />
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', padding: '10px' }}>
+                                  <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        )}
+
+                        {needsExpand && (
+                          <button
+                            onClick={() => setExpandedPosts(prev => ({ ...prev, [userPost.id || 'userpost']: !isExpanded }))}
+                            style={{ background: 'none', border: 'none', color: '#00F5FF', padding: '5px 0', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                          >
+                            {isExpanded ? 'View less' : `View more ${mediaCount > 1 ? `(+${mediaCount - 1} media)` : '' }`}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>
                     {userPost.village}, {userPost.district}, {userPost.state}
                   </p>
@@ -7083,7 +7089,7 @@ function AppContent() {
 
               {/* Community Stream */}
               {communityPosts
-                .filter(p => !currentUser || p.userId !== currentUser.uid)
+                .filter(p => !currentUser || p.userId !== (currentUser.id || currentUser.uid))
                 .filter(p => {
                   const loc = (selectedCity || '').toLowerCase();
                   if (!loc && !selectedCategory) return true;
@@ -7102,7 +7108,7 @@ function AppContent() {
                   return cityMatch && catMatch;
                 })
                 .map((post, idx) => (
-                  <div key={post.id || post.firebaseId || idx} style={{
+                  <div key={post.id || idx} style={{
                     background: 'rgba(255,255,255,0.02)',
                     border: '1px solid rgba(255,255,255,0.06)',
                     borderRadius: '20px',
@@ -7125,24 +7131,67 @@ function AppContent() {
                         <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{formatPostDate(post.timestamp)}</p>
                       </div>
                     </div>
-                    <p style={{ color: 'white', fontSize: '15px', lineHeight: '1.6', margin: '0 0 15px 0' }}>{post.message}</p>
+                    {(() => {
+                      const isExpanded = expandedPosts[post.id];
+                      const imgs = post.postImages || (post.postImage ? [post.postImage] : []);
+                      const vids = post.postVideos || [];
+                      const mediaCount = imgs.length + vids.length;
+                      const isLongText = post.message && post.message.length > 150;
+                      const needsExpand = mediaCount > 1 || isLongText;
 
-                    {/* Media attachments */}
-                    {(post.postImages?.length > 0 || post.postImage || post.postVideos?.length > 0) && (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '15px' }}>
-                        {(post.postImages || (post.postImage ? [post.postImage] : [])).map((img, i) => (
-                          <img key={i} src={img} onClick={() => setFullScreenMedia({ type: 'image', url: img })} style={{ width: '100%', borderRadius: '12px', height: '140px', objectFit: 'cover', cursor: 'pointer' }} />
-                        ))}
-                        {(post.postVideos || []).map((vid, i) => (
-                          <div key={i} style={{ position: 'relative', height: '140px', cursor: 'pointer' }} onClick={() => setFullScreenMedia({ type: 'video', url: vid })}>
-                            <video src={vid} playsInline muted loop style={{ width: '100%', borderRadius: '12px', height: '140px', background: 'black', objectFit: 'cover' }} />
-                            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', padding: '10px' }}>
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                      return (
+                        <div style={{ paddingBottom: '5px' }}>
+                          {post.message && (
+                            <p style={{
+                              color: 'white',
+                              fontSize: '15px',
+                              lineHeight: '1.6',
+                              margin: '0 0 10px 0',
+                              ...(!isExpanded && isLongText ? {
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              } : {})
+                            }}>
+                              {post.message}
+                            </p>
+                          )}
+
+                          {mediaCount > 0 && (
+                            <div style={{
+                              display: isExpanded ? 'flex' : 'grid',
+                              flexDirection: 'column',
+                              gridTemplateColumns: isExpanded ? 'none' : 'repeat(auto-fit, minmax(130px, 1fr))',
+                              gap: '10px',
+                              marginBottom: '10px'
+                            }}>
+                              {imgs.slice(0, isExpanded ? imgs.length : (mediaCount > 1 ? 1 : imgs.length)).map((img, i) => (
+                                <img key={i} src={img} onClick={() => setFullScreenMedia({ type: 'image', url: img })}
+                                     style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                              ))}
+                              {vids.slice(0, isExpanded ? vids.length : (imgs.length === 0 ? 1 : 0)).map((vid, i) => (
+                                <div key={i} style={{ position: 'relative', width: '100%', cursor: 'pointer' }} onClick={() => setFullScreenMedia({ type: 'video', url: vid })}>
+                                  <video src={vid} playsInline muted loop style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', background: 'black', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover' }} />
+                                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', padding: '10px' }}>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          )}
+
+                          {needsExpand && (
+                            <button
+                              onClick={() => setExpandedPosts(prev => ({ ...prev, [post.id]: !isExpanded }))}
+                              style={{ background: 'none', border: 'none', color: '#00F5FF', padding: '5px 0', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                            >
+                              {isExpanded ? 'View less' : `View more ${mediaCount > 1 ? `(+${mediaCount - 1} media)` : '' }`}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
                       {post.village || post.district}, {post.state}
                     </p>

@@ -447,6 +447,27 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
   transform: translateY(-2px);
 }
 
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
 .submit-btn {
   flex: 1;
 }
@@ -1252,11 +1273,12 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 .ad-banner {
   width: 100%;
   max-width: 400px;
+  aspect-ratio: 16 / 9;
   height: auto;
-  min-height: 180px;
+  min-height: 0;
   border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   position: relative;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
@@ -1546,18 +1568,19 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 
 /* City and Category Search Screen Styles */
 .search-content {
-  gap: 25px;
-  padding-top: 80px;
+  gap: 10px;
+  padding-top: 10px;
+  height: 100%;
+  overflow: hidden;
+  justify-content: space-between;
 }
 
 .search-ad-top {
-  height: auto;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .search-ad-bottom {
-  height: auto;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .search-buttons {
@@ -1645,9 +1668,28 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
   font-weight: 600;
 }
 
-.selected-value {
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-toggle-btn {
   position: absolute;
-  bottom: 10px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.location-value {
   left: 20px;
   color: white;
   font-size: 13px;
@@ -1666,7 +1708,6 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 
 .search-continue-btn {
   width: 100%;
-  max-width: 400px;
   padding: 16px;
   border: none;
   border-radius: 16px;
