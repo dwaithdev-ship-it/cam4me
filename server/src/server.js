@@ -4,6 +4,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -26,6 +27,9 @@ app.use(cors({
     origin: true, // Allow all origins in development
     credentials: true
 }));
+
+// Compress responses to reduce payload size for mobile/dev over LAN
+app.use(compression());
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));

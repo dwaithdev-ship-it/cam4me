@@ -10,6 +10,11 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     host: true,
+    // Improve HMR and websocket connectivity for devices on the LAN
+    hmr: {
+      host: '192.168.29.122',
+      protocol: 'ws'
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:5000',
