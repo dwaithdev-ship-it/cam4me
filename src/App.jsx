@@ -1,4 +1,4 @@
-// Placeholder function for Ad Manager password change
+﻿// Placeholder function for Ad Manager password change
 function handleChangeAdManagerPassword() {
   // TODO: Implement password change logic
   console.log('handleChangeAdManagerPassword called');
@@ -1098,12 +1098,21 @@ function AppContent() {
           setCurrentScreen('profile_setup');
         }
       } else {
-        alert(result.error || "Signup failed");
+        if (result.error === 'Network Error' || result.message && result.message.includes('Unable to reach backend')) {
+          alert('Cannot reach backend. Make sure your development server is running on your PC and your phone is on the same network.');
+        } else {
+          alert(result.error || "Signup failed");
+        }
       }
     } catch (error) {
       isSigningUpRef.current = false;
       console.error("Signup Error:", error);
-      alert("Error creating account: " + error.message);
+      const msg = (error && error.message) || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Network Error')) {
+        alert('Network error: unable to reach backend. Ensure your PC server is running and the phone can access http://<PC_IP>:5000');
+      } else {
+        alert('Error creating account: ' + msg);
+      }
     }
   };
 
@@ -1134,6 +1143,8 @@ function AppContent() {
       } else {
         if (result.error === 'Device Mismatch') {
           alert('Device Mismatch: ' + result.message);
+        } else if (result.error === 'Network Error' || (result.message && result.message.includes('Unable to reach backend'))) {
+          alert('Cannot reach backend. Make sure your development server is running on your PC and your phone is on the same network.');
         } else {
           alert(result.error || "Login failed");
         }
@@ -4076,7 +4087,7 @@ function AppContent() {
                 value={adminAuth.email}
                 onChange={handleAdminAuthChange}
                 required
-                placeholder="Enter emails"
+                placeholder="Enter email"
               />
             </div>
 

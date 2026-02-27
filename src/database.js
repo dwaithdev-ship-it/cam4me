@@ -3,9 +3,16 @@ import { Capacitor } from '@capacitor/core';
 class DatabaseService {
   constructor() {
     this.isWeb = Capacitor.getPlatform() === 'web';
-    this.baseUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-      ? 'http://localhost:5000/api'
-      : `${window.location.origin}/api`;
+    // Determine base URL for API calls
+    // 1. If running on a native device (Capacitor), prefer VITE_API_URL or fallback to a local network address.
+    // 2. If running in a web browser, keep existing logic (localhost or same origin).
+    if (Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+      this.baseUrl = import.meta.env.VITE_API_URL || 'http://10.0.2.2:5000/api'; // Android emulator localhost
+    } else {
+      this.baseUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+        ? 'http://localhost:5000/api'
+        : `${window.location.origin}/api`);
+    }
   }
 
   getHeaders() {
@@ -19,12 +26,18 @@ class DatabaseService {
   async initialize() {
     console.log('Database service initializing (Connecting to Express API)...');
     try {
-      // Use health check path that matches proxy
-      const response = await fetch(`${window.location.origin}/health`);
-      if (response.ok) return true;
-      // Fallback for direct backend check
-      const directResponse = await fetch(`http://localhost:5000/health`);
-      return directResponse.ok;
+      // Use health check path that matches backend regardless of frontend port
+      // If VITE_API_URL is set, derive health URL from it; otherwise fallback to localhost
+      const healthUrl = this.baseUrl.replace('/api', '/health');
+      try {
+        const response = await fetch(healthUrl);
+        if (response.ok) return true;
+      } catch (e) { /* ignore */ }
+      // Fallback to default localhost health endpoint
+      try {
+        const fallback = await fetch('http://localhost:5000/health');
+        return fallback.ok;
+      } catch (e) { return false; }
     } catch (err) {
       console.warn('Backend API connection failed:', err.message);
       return false;
@@ -33,26 +46,37 @@ class DatabaseService {
 
   // --- AUTH METHODS ---
   async login(email, password, deviceId) {
-    const response = await fetch(`${this.baseUrl}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, device_id: deviceId })
-    });
-    const data = await response.json();
-    if (response.ok) {
-      localStorage.setItem('chatcam_token', data.token);
-      localStorage.setItem('chatcam_user', JSON.stringify(data.user));
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, device_id: deviceId })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('chatcam_token', data.token);
+        localStorage.setItem('chatcam_user', JSON.stringify(data.user));
+      }
+      return { ok: response.ok, ...data };
+    } catch (err) {
+      console.warn('Login network error:', err.message);
+      return { ok: false, error: 'Network Error', message: 'Unable to reach backend. Ensure the server is running and your device can access http://<PC_IP>:5000' };
     }
-    return { ok: response.ok, ...data };
   }
 
   async register(userData) {
-    const response = await fetch(`${this.baseUrl}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
-    });
-    return { ok: response.ok, ...await response.json() };
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      const data = await response.json();
+      return { ok: response.ok, ...data };
+    } catch (err) {
+      console.warn('Register network error:', err.message);
+      return { ok: false, error: 'Network Error', message: 'Unable to reach backend. Ensure the server is running and your device can access http://<PC_IP>:5000' };
+    }
   }
 
   logout() {
@@ -122,7 +146,8 @@ class DatabaseService {
       });
       return response.ok ? await response.json() : { exists: false };
     } catch (e) {
-      return { exists: false };
+      console.warn('checkDeviceExists network error:', e.message);
+      return { exists: false, error: 'Network Error' };
     }
   }
 
