@@ -48,8 +48,7 @@ const AUTHORIZED_ADMINS = ['dwaith.dev@gmail.com']
 const AUTHORIZED_MANAGERS = ['dwaith.dev@gmail.com']
 
 // --- MASTER DATA API CONFIGURATION ---
-// Change this to your server's IP (e.g., 'http://192.168.29.122:5000/api/master-data') if accessing from a different device
-const API_BASE_URL = 'http://localhost:5000/api/master-data';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/master-data';
 
 function ensureAbsoluteUrl(url) {
   if (!url) return '';
@@ -325,10 +324,7 @@ function AppContent() {
 
   const fetchCities = async () => {
     try {
-      // Use the main master-data endpoint which returns { locations, categories, cities }
-      const res = await fetch(`${API_BASE_URL}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
+      const data = await database.getMasterData();
       if (data && data.cities && data.cities.length > 0) {
         setMasterData(prev => ({
           ...prev,
@@ -340,7 +336,7 @@ function AppContent() {
       }
       throw new Error('No cities in response');
     } catch (e) {
-      console.warn('Fetch cities from API failed, using fallback:', e.message);
+      console.warn('Fetch master data failed, using fallback:', e.message);
       // Hardcoded fallback for common cities in AP & TS
       const fallbackCities = [
         'Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Khammam', 'Ramagundam', 'Mahbubnagar', 'Nalgonda', 'Suryapet', 'Miryalaguda',
@@ -1099,7 +1095,7 @@ function AppContent() {
         }
       } else {
         if (result.error === 'Network Error' || result.message && result.message.includes('Unable to reach backend')) {
-          alert('Cannot reach backend. Make sure your development server is running on your PC and your phone is on the same network.');
+          alert('Cannot reach backend. Please check your internet connection or verify the server is active.');
         } else {
           alert(result.error || "Signup failed");
         }
@@ -1109,7 +1105,7 @@ function AppContent() {
       console.error("Signup Error:", error);
       const msg = (error && error.message) || '';
       if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Network Error')) {
-        alert('Network error: unable to reach backend. Ensure your PC server is running and the phone can access http://<PC_IP>:5000');
+        alert('Network error: unable to reach backend. Please check your internet connection or verify the server is active.');
       } else {
         alert('Error creating account: ' + msg);
       }
@@ -1144,7 +1140,7 @@ function AppContent() {
         if (result.error === 'Device Mismatch') {
           alert('Device Mismatch: ' + result.message);
         } else if (result.error === 'Network Error' || (result.message && result.message.includes('Unable to reach backend'))) {
-          alert('Cannot reach backend. Make sure your development server is running on your PC and your phone is on the same network.');
+          alert('Cannot reach backend. Please check your internet connection or verify the server is active.');
         } else {
           alert(result.error || "Login failed");
         }
@@ -1346,19 +1342,19 @@ function AppContent() {
 
   const handleProfileImageSelect = async (source) => {
     setShowProfileImagePicker(false);
-    
+
     // Check if we're on the web platform
     const isWeb = !window.Capacitor || window.Capacitor.getPlatform() === 'web';
-    
+
     if (isWeb) {
       // Web fallback: use standard HTML file input since Camera.getPhoto requires HTTPS/Secure Context
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
       if (source === CameraSource.Camera) {
-          input.capture = 'environment';
+        input.capture = 'environment';
       }
-      
+
       input.onchange = (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -1370,7 +1366,7 @@ function AppContent() {
           reader.readAsDataURL(file);
         }
       };
-      
+
       input.click();
       return;
     }
@@ -2584,44 +2580,21 @@ function AppContent() {
           </div>
 
           <form onSubmit={handleGetOTP_Signup} className="auth-form" style={{ width: '100%', maxWidth: '340px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="form-group" style={{ marginTop: '20px' }}>
-              <label style={{ color: 'white', marginBottom: '12px', fontSize: '18px', fontWeight: '500', display: 'block' }}>Mobile number</label>
+            <div className="form-group" style={{ marginTop: '20px', width: '100%' }}>
+              <label style={{ color: 'white', marginBottom: '8px', fontSize: '14px', fontWeight: '500', display: 'block', textAlign: 'left' }}>Mobil number</label>
               <div style={{
                 display: 'flex',
                 background: 'rgba(255, 255, 255, 0.15)',
-                border: otpError ? '1px solid #ff4444' : '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '16px',
+                border: otpError ? '1px solid #ff4444' : '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '6px',
                 overflow: 'hidden',
-                height: '56px',
-                alignItems: 'center'
+                height: '42px',
+                alignItems: 'center',
+                padding: '0 12px'
               }}>
-                <select
-                  value={selectedCountryCode}
-                  onChange={(e) => setSelectedCountryCode(e.target.value)}
-                  className="country-select"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    padding: '0 0 0 15px',
-                    fontSize: '18px',
-                    height: '100%',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    appearance: 'none',
-                    borderRight: '1px solid rgba(255,255,255,0.2)',
-                    width: '60px'
-                  }}
-                >
-                  {countryCodes.map(c => (
-                    <option key={c.code + c.name} value={c.code}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
+                <span style={{ color: 'white', fontSize: '15px' }}>+91-</span>
                 <input
                   type="tel"
-                  placeholder="Enter mobile number"
                   value={tempMobile}
                   onChange={(e) => {
                     setTempMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
@@ -2633,8 +2606,7 @@ function AppContent() {
                     background: 'transparent',
                     border: 'none',
                     color: 'white',
-                    padding: '0 15px 0 5px',
-                    fontSize: '18px',
+                    fontSize: '15px',
                     height: '100%',
                     outline: 'none',
                     letterSpacing: '1px'
@@ -7068,7 +7040,7 @@ function AppContent() {
                           }}>
                             {imgs.slice(0, isExpanded ? imgs.length : (mediaCount > 1 ? 1 : imgs.length)).map((img, i) => (
                               <img key={i} src={img} onClick={() => setFullScreenMedia({ type: 'image', url: img })}
-                                   style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                                style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} />
                             ))}
                             {vids.slice(0, isExpanded ? vids.length : (imgs.length === 0 ? 1 : 0)).map((vid, i) => (
                               <div key={i} style={{ position: 'relative', width: '100%', cursor: 'pointer' }} onClick={() => setFullScreenMedia({ type: 'video', url: vid })}>
@@ -7086,7 +7058,7 @@ function AppContent() {
                             onClick={() => setExpandedPosts(prev => ({ ...prev, [userPost.id || 'userpost']: !isExpanded }))}
                             style={{ background: 'none', border: 'none', color: '#00F5FF', padding: '5px 0', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
                           >
-                            {isExpanded ? 'View less' : `View more ${mediaCount > 1 ? `(+${mediaCount - 1} media)` : '' }`}
+                            {isExpanded ? 'View less' : `View more ${mediaCount > 1 ? `(+${mediaCount - 1} media)` : ''}`}
                           </button>
                         )}
                       </div>
@@ -7179,7 +7151,7 @@ function AppContent() {
                             }}>
                               {imgs.slice(0, isExpanded ? imgs.length : (mediaCount > 1 ? 1 : imgs.length)).map((img, i) => (
                                 <img key={i} src={img} onClick={() => setFullScreenMedia({ type: 'image', url: img })}
-                                     style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} />
+                                  style={{ width: '100%', borderRadius: '12px', height: isExpanded || mediaCount === 1 ? 'auto' : '200px', maxHeight: '75vh', objectFit: isExpanded || mediaCount === 1 ? 'contain' : 'cover', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} />
                               ))}
                               {vids.slice(0, isExpanded ? vids.length : (imgs.length === 0 ? 1 : 0)).map((vid, i) => (
                                 <div key={i} style={{ position: 'relative', width: '100%', cursor: 'pointer' }} onClick={() => setFullScreenMedia({ type: 'video', url: vid })}>
@@ -7197,7 +7169,7 @@ function AppContent() {
                               onClick={() => setExpandedPosts(prev => ({ ...prev, [post.id]: !isExpanded }))}
                               style={{ background: 'none', border: 'none', color: '#00F5FF', padding: '5px 0', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
                             >
-                              {isExpanded ? 'View less' : `View more ${mediaCount > 1 ? `(+${mediaCount - 1} media)` : '' }`}
+                              {isExpanded ? 'View less' : `View more ${mediaCount > 1 ? `(+${mediaCount - 1} media)` : ''}`}
                             </button>
                           )}
                         </div>
