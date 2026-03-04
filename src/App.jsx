@@ -108,6 +108,7 @@ function AppContent() {
   const [hasScrolledTerms, setHasScrolledTerms] = useState(false)
   const [showDeclineAlert, setShowDeclineAlert] = useState(false)
   const termsBoxRef = useRef(null)
+  const [showFullTermsModal, setShowFullTermsModal] = useState(false)
   const [locationSuggestions, setLocationSuggestions] = useState([])
   const [availableStates, setAvailableStates] = useState([])
   const [localLocationData, setLocalLocationData] = useState(null)
@@ -424,40 +425,17 @@ function AppContent() {
   useEffect(() => {
     const initializeDevice = async () => {
       try {
-        console.log('[Device] Initializing device...');
-
-        // No artificial delay — instant device recognition
-
         const devId = await getDeviceId();
         setDeviceId(devId);
         console.log('[Device] Captured Device ID:', devId);
-
-        // Check if this device is already registered
-        const registrationStatus = await checkDeviceRegistration(devId);
-        console.log('[Device] Registration status in database:', registrationStatus);
-
-        if (registrationStatus.exists && registrationStatus.user) {
-          // Existing user - show sign-in page directly
-          console.log('[Device] Registered device found. User:', registrationStatus.user.uid);
-
-          // Only redirect if we are not already logged in/entering OTP/on signup
-          setCurrentScreen(prev => {
-            if (prev === 'welcome_mobile' || prev === 'form') {
-              console.log('[Device] Auto-navigating to signin');
-              return 'signin';
-            }
-            return prev;
-          });
-        } else {
-          console.log('[Device] New/Unregistered device detected');
-        }
+        // Device recognition and auto-navigation disabled per client request.
       } catch (err) {
         console.error('[Device] Initialization error:', err);
       }
     };
 
     initializeDevice();
-  }, [dbInitialized]); // Re-run when DB initialized
+  }, [dbInitialized]);
 
   // Ensure states and cities are fetched on mount and when masterData changes
   useEffect(() => {
@@ -614,15 +592,8 @@ function AppContent() {
           if (user.selected_category) setSelectedCategory(user.selected_category);
           setCurrentScreen('feed');
         } else {
-          // 2. Not logged in, check device binding on backend
-          const regStatus = await checkDeviceRegistration(devId);
-          if (regStatus && regStatus.exists) {
-            // Existing device -> Navigate directly to Sign In page
-            setCurrentScreen('signin');
-          } else {
-            // New device/user -> Full onboarding flow
-            setCurrentScreen('welcome_mobile');
-          }
+          // 2. Not logged in — proceed with onboarding flow
+          setCurrentScreen('welcome_mobile');
         }
 
         await loadRecords()
@@ -2086,16 +2057,16 @@ function AppContent() {
       // Update local state
       if (savedPost) {
         setUserPost({
-          ...savedPost,
-          userName: currentUser.username || currentUser.name,
-          userPhoto: currentUser.photo_url || currentUser.photo,
-          mobile: currentUser.mobile,
-          city: currentUser.selected_city || (profileData && profileData.city),
-          category: currentUser.selected_category || (profileData && profileData.category),
-          state: currentUser.state || (profileData && profileData.state),
-          district: currentUser.district || (profileData && profileData.district),
-          village: currentUser.village || (profileData && profileData.village)
-        });
+            ...savedPost,
+            userName: profileData.name || currentUser.name || currentUser.username,
+            userPhoto: currentUser.photo_url || currentUser.photo,
+            mobile: currentUser.mobile,
+            city: currentUser.selected_city || (profileData && profileData.city),
+            category: currentUser.selected_category || (profileData && profileData.category),
+            state: currentUser.state || (profileData && profileData.state),
+            district: currentUser.district || (profileData && profileData.district),
+            village: currentUser.village || (profileData && profileData.village)
+          });
       }
 
       // Reset form
@@ -2567,32 +2538,19 @@ function AppContent() {
         <div className="status-bar">
           <span className="time">{time}</span>
         </div>
+
         <div className="content" style={{ paddingBottom: '30px', paddingTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
-          <div className="welcome-top-section" style={{ textAlign: 'center' }}>
-            <div className="camera-logo-gradient" style={{ marginBottom: '20px' }}>
-              <img src={logoBubble} className="logo-pulse" alt="Logo" style={{ width: '450px', height: '450px', maxWidth: '100%', objectFit: 'contain' }} />
-            </div>
-
-            <div style={{ marginBottom: '40px' }}>
-              <img src={welcomeText} alt="Welcome" style={{ width: '280px', maxWidth: '80%', objectFit: 'contain' }} />
-            </div>
+          <div className="welcome-top-section">
+            <img src={logoBubble} className="logo-pulse-large" alt="Logo" />
+            <img src={welcomeText} className="welcome-text-img" alt="Welcome" />
           </div>
 
-          <form onSubmit={handleGetOTP_Signup} className="auth-form" style={{ width: '100%', maxWidth: '340px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="form-group" style={{ marginTop: '20px', width: '100%' }}>
-              <label style={{ color: 'white', marginBottom: '8px', fontSize: '14px', fontWeight: '500', display: 'block', textAlign: 'left' }}>Mobil number</label>
-              <div style={{
-                display: 'flex',
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: otpError ? '1px solid #ff4444' : '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '6px',
-                overflow: 'hidden',
-                height: '42px',
-                alignItems: 'center',
-                padding: '0 12px'
-              }}>
-                <span style={{ color: 'white', fontSize: '15px' }}>+91-</span>
+          <form onSubmit={handleGetOTP_Signup} className="auth-form" style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div className="mobile-input-wrapper">
+              <label className="mobile-input-label">Mobile number</label>
+              <div className="mobile-input-box" style={{ border: otpError ? '1px solid #ff4444' : undefined }}>
+                <span>+91-</span>
                 <input
                   type="tel"
                   value={tempMobile}
@@ -2601,33 +2559,22 @@ function AppContent() {
                     if (otpError) setOtpError('');
                   }}
                   required
-                  style={{
-                    flex: 1,
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    fontSize: '15px',
-                    height: '100%',
-                    outline: 'none',
-                    letterSpacing: '1px'
-                  }}
+                  placeholder=""
                 />
               </div>
+              {otpError && <p style={{ color: '#ff4444', fontSize: '14px', marginTop: '8px' }}>{otpError}</p>}
             </div>
             {otpError && <p style={{ color: '#ff4444', fontSize: '14px', marginTop: '8px', marginHorizontal: '4px' }}>{otpError}</p>}
 
-            <div style={{ marginTop: 'auto', width: '100%' }}>
+            <div style={{ marginTop: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <button
                 type="submit"
-                className={`premium-auth-btn ${(!isValidMobile || isSendingOtp) ? 'disabled' : ''}`}
+                className={`get-otp-btn ${(!isValidMobile || isSendingOtp) ? 'disabled' : ''}`}
                 disabled={!isValidMobile || isSendingOtp}
               >
-                {isSendingOtp ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                    <div className="spinner"></div> Sending...
-                  </div>
-                ) : 'Get OTP'}
+                {isSendingOtp ? 'Sending...' : 'Get OTP'}
               </button>
+              <div className="bottom-indicator"></div>
             </div>
           </form>
         </div >
@@ -2644,54 +2591,57 @@ function AppContent() {
         <div className="status-bar">
           <span className="time">{time}</span>
         </div>
-        <div className="content" style={{ paddingBottom: '30px', paddingTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
-          <div className="welcome-top-section" style={{ textAlign: 'center', marginBottom: '80px' }}>
-            <div className="camera-logo-gradient" style={{ marginBottom: '20px' }}>
-              <img src="/logo_bubble.png" className="logo-pulse" alt="Logo" style={{ width: '450px', height: '450px', maxWidth: '100%', objectFit: 'contain' }} />
-            </div>
+        <button
+          onClick={() => setCurrentScreen(previousScreen || 'welcome_mobile')}
+          style={{
+            position: 'absolute',
+            top: 14,
+            left: 12,
+            background: 'transparent',
+            border: 'none',
+            color: 'white',
+            fontSize: 30,
+            lineHeight: '30px',
+            padding: 6,
+            cursor: 'pointer'
+          }}
+          aria-label="Back"
+        >
+          ‹
+        </button>
+
+        <div className="content" style={{ paddingBottom: '30px', paddingTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+            <img src={logoBubble} className="otp-logo" alt="Chatcam" />
           </div>
 
           <form onSubmit={handleVerifyOTP_Signup} className="auth-form" style={{ width: '100%', maxWidth: '340px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="form-group" style={{ marginTop: '20px' }}>
-              <label style={{ color: 'white', marginBottom: '12px', fontSize: '18px', fontWeight: '500', display: 'block' }}>Enter OTP </label>
-              <input
-                type="text"
-                placeholder="Enter 6-digit OTP"
-                value={otpValue}
-                onChange={(e) => {
-                  setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6));
-                  if (otpError) setOtpError('');
-                }}
-                required
-                className="standalone-input"
-                maxLength="6"
-                style={{
-                  width: '100%',
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  border: otpError ? '1px solid #ff4444' : '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '16px',
-                  color: 'white',
-                  padding: '16px 20px',
-                  fontSize: '20px',
-                  outline: 'none',
-                  textAlign: 'left'
-                }}
-              />
+            <div className="mobile-input-wrapper" style={{ marginTop: '28px' }}>
+              <label className="mobile-input-label">OTP</label>
+              <div className="mobile-input-box" style={{ border: otpError ? '1px solid #ff4444' : undefined }}>
+                <input
+                  type="text"
+                  placeholder="Enter OTP"
+                  value={otpValue}
+                  onChange={(e) => {
+                    setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6));
+                    if (otpError) setOtpError('');
+                  }}
+                  required
+                />
+              </div>
               {otpError && <p style={{ color: '#ff4444', fontSize: '14px', marginTop: '8px' }}>{otpError}</p>}
             </div>
 
-            <div style={{ marginTop: 'auto', width: '100%', marginBottom: '20px' }}>
+            <div style={{ marginTop: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <button
                 type="submit"
-                className={`premium-auth-btn ${(!isValidOtp || isSendingOtp) ? 'disabled' : ''}`}
+                className={`get-otp-btn ${(!isValidOtp || isSendingOtp) ? 'disabled' : ''}`}
                 disabled={!isValidOtp || isSendingOtp}
+                style={{ width: 180 }}
               >
-                {isSendingOtp ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                    <div className="spinner"></div> Verifying...
-                  </div>
-                ) : 'Submit'}
+                {isSendingOtp ? 'Verifying...' : 'Submit'}
               </button>
 
               <button
@@ -2703,13 +2653,16 @@ function AppContent() {
                   border: 'none',
                   color: otpTimer > 0 ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.7)',
                   width: '100%',
-                  marginTop: '15px',
+                  marginTop: '14px',
                   fontSize: '16px',
-                  cursor: otpTimer > 0 ? 'default' : 'pointer'
+                  cursor: otpTimer > 0 ? 'default' : 'pointer',
+                  textAlign: 'center'
                 }}
               >
                 {otpTimer > 0 ? `Resend OTP in ${otpTimer}s` : 'Resend OTP'}
               </button>
+
+              <div className="bottom-indicator" style={{ marginTop: 18 }}></div>
             </div>
           </form>
         </div>
@@ -2833,10 +2786,12 @@ function AppContent() {
               <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', display: 'block', marginBottom: '2px' }}>Profile name</label>
               <input
                 type="text"
+                name="name"
                 className="underline-input"
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.7)', color: 'white', padding: '8px 0', fontSize: '16px', outline: 'none', opacity: 0.6, cursor: 'not-allowed' }}
-                value={profileData.name || formData.name}
-                readOnly
+                placeholder="Enter profile name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.7)', color: 'white', padding: '8px 0', fontSize: '16px', outline: 'none', opacity: 1, cursor: 'text' }}
               />
             </div>
 
@@ -3395,7 +3350,10 @@ function AppContent() {
 
         <div className="content">
           <div className="camera-logo-gradient">
-            <img src="/cam4me_logo.png" alt="Chatcam Logo" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+            <img src={logoBubble} alt="Chatcam Logo" className="logo-image" />
+          </div>
+          <div style={{ width: '100%', maxWidth: 420, display: 'flex', justifyContent: 'flex-end', marginTop: -110, paddingRight: 10 }}>
+            <button type="button" className="help-btn-icon" onClick={() => setShowFullTermsModal(true)} title="View full terms">?</button>
           </div>
 
           <h1 className="auth-title">Sign In</h1>
@@ -3463,6 +3421,44 @@ function AppContent() {
             }} style={{ color: '#FFD700', fontSize: '13px' }}>Forgot Password?</button>
           </div>
 
+          {showFullTermsModal && (
+            <div className="terms-modal" onClick={() => setShowFullTermsModal(false)}>
+              <div className="terms-modal-card" onClick={(e) => e.stopPropagation()}>
+                <div className="terms-box" style={{ maxHeight: '70vh', marginBottom: 12 }}>
+                  <h3>Terms & Conditions</h3>
+                  <p className="terms-updated">Last updated: 4 February 2026</p>
+                  <div className="terms-content">
+                    <p>Please read these terms and conditions ("terms and conditions", "terms") carefully before using Chatcam mobile application ("app", "service") operated by Chatcam ("us", "we", "our").</p>
+
+                    <h4>1. Conditions of use</h4>
+                    <p>By using this app, you certify that you have read and reviewed this Agreement and that you agree to comply with its terms. If you do not want to be bound by the terms of this Agreement, you are advised to stop using the app accordingly. Chatcam only grants use and access of this app, its products, and its services to those who have accepted its terms.</p>
+
+                    <h4>2. Privacy policy</h4>
+                    <p>Before you continue using our app, we advise you to read our privacy policy regarding our user data collection. It will help you better understand our practices.</p>
+
+                    <h4>3. Age restriction</h4>
+                    <p>You must be at least 18 (eighteen) years of age before you can use this app. By using this app, you warrant that you are at least 18 years of age and you may legally adhere to this Agreement.</p>
+
+                    <h4>4. Intellectual property</h4>
+                    <p>You agree that all materials, products, and services provided on this app are the property of Chatcam, its affiliates, directors, officers, employees, agents, suppliers, or licensors including all copyrights, trade secrets, trademarks, patents, and other intellectual property.</p>
+
+                    <h4>5. User accounts</h4>
+                    <p>As a user of this app, you may be asked to register with us and provide private information. You are responsible for ensuring the accuracy of this information, and you are responsible for maintaining the safety and security of your identifying information. You are also responsible for all activities that occur under your account or password.</p>
+
+                    <h4>6. Applicable law</h4>
+                    <p>By using this app, you agree that the laws of our location, without regard to principles of conflict laws, will govern these terms and conditions, or any dispute of any sort that might come between Chatcam and you, or its business partners and associates.</p>
+
+                    <h4>7. Disputes</h4>
+                    <p>In the event of disputes, both parties agree to first attempt in good faith to resolve the dispute amicably through negotiation.</p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <button className="auth-submit-btn" onClick={() => setShowFullTermsModal(false)}>OK</button>
+                </div>
+              </div>
+            </div>
+          )}
+
 
 
           <div className="auth-footer">
@@ -3488,14 +3484,32 @@ function AppContent() {
           <span className="time">{time}</span>
         </div>
 
-        <div className="content">
+        <button
+          onClick={() => setCurrentScreen('verify_otp')}
+          style={{
+            position: 'absolute',
+            top: 14,
+            left: 12,
+            background: 'transparent',
+            border: 'none',
+            color: 'white',
+            fontSize: 30,
+            lineHeight: '30px',
+            padding: 6,
+            cursor: 'pointer',
+            zIndex: 100
+          }}
+          aria-label="Back"
+        >
+          ‹
+        </button>
 
-
-          <div className="camera-logo-gradient">
-            <img src="/cam4me_logo.png" alt="Chatcam Logo" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+        <div className="content" style={{ paddingTop: '10px' }}>
+          <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+            <img src={logoBubble} className="otp-logo" alt="Chatcam" />
           </div>
 
-          <div className="terms-intro">
+          <div className="terms-intro" style={{ textAlign: 'center', marginBottom: '16px', maxWidth: '100%', width: '100%', paddingLeft: '12px', paddingRight: '12px' }}>
             <h2>Hello 👋</h2>
             <p>Before you create an account, please read and accept our Terms & Conditions</p>
           </div>
@@ -3545,6 +3559,10 @@ function AppContent() {
               Accept
             </button>
           </div>
+
+          <div className="bottom-indicator"></div>
+
+          <div className="bottom-indicator"></div>
 
           {showDeclineAlert && (
             <div style={{
@@ -4285,11 +4303,7 @@ function AppContent() {
           <span className="time">{time}</span>
         </div>
         <div className="debug-header" style={{ background: '#FF4444', height: '60px', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
-          <button className="header-btn" onClick={handleLogout} style={{ color: 'white' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
-            </svg>
-          </button>
+          <div style={{ width: '44px' }}></div>
           <h1 style={{ fontSize: '18px', margin: 0, color: 'white', flex: 1, textAlign: 'center' }}>Admin Dashboard</h1>
           <button className="header-btn" onClick={() => { loadRecords(); syncMasterData(); }} style={{ color: 'white' }} title="Refresh Data">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -4347,11 +4361,7 @@ function AppContent() {
           <span className="time">{time}</span>
         </div>
         <div className="debug-header" style={{ background: '#FFD700', height: '60px', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
-          <button className="header-btn" onClick={handleLogout} style={{ color: 'black' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
-            </svg>
-          </button>
+          <div style={{ width: '44px' }}></div>
           <h1 style={{ fontSize: '18px', margin: 0, color: 'black', flex: 1, textAlign: 'center' }}>Ad Manager</h1>
           <div style={{ width: '44px' }}></div>
         </div>
@@ -6150,29 +6160,7 @@ function AppContent() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={() => setCurrentScreen('change_password')}>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <span style={{ fontSize: '22px', width: '24px', color: '#FFD700' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                </span>
-                <div style={{ color: '#FFD700', fontSize: '16px' }}>Change Password</div>
-              </div>
-              <span style={{ color: 'white', opacity: 0.5 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }} onClick={handleLogout}>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <span style={{ fontSize: '22px', width: '24px', color: '#ff4d4d' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                </span>
-                <div style={{ color: '#ff4d4d', fontSize: '16px' }}>Logout</div>
-              </div>
-              <span style={{ color: 'white', opacity: 0.5 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-              </span>
-            </div>
+            
 
           </div>
         </div>

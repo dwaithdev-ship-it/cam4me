@@ -9,12 +9,34 @@
   height: 100%;
 }
 
+/* Layout tokens for quick tuning */
+:root {
+  --chatcam-logo-size: 80px;
+  --auth-input-height: 56px; /* mobile/OTP input box height (increase to make fields taller) */
+  --auth-font-size: 16px; /* font size for country code + input */
+  --auth-button-height: 52px; /* unified height for Get OTP / Submit */
+  --auth-button-gap: 18px; /* gap between button and the indicator */
+  --indicator-bottom: 18px; /* distance from screen bottom to indicator */
+
+  /* OTP-specific tunables (affect 2nd screen only) */
+  --otp-field-offset: 88px; /* increase to move OTP label+field down */
+  --otp-submit-top: 66px;   /* increase to move Submit button down independently */
+
+  /* Font tokens */
+  --font-family-primary: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  --font-header: 18px; /* main header size */
+  --font-small-header: 15px; /* small header size */
+}
+
 body {
   background-color: #111;
   margin: 0;
   width: 100%;
   height: 100dvh;
   overflow: hidden;
+  font-family: var(--font-family-primary) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Hide scrollbars globally but keep functionality */
@@ -209,9 +231,8 @@ body {
 }
 
 .logo-image {
-  width: 45px;
-  /* Reduced from 55px */
-  height: 45px;
+  width: var(--chatcam-logo-size);
+  height: var(--chatcam-logo-size);
   max-width: 10vh;
   max-height: 10vh;
   object-fit: contain;
@@ -220,7 +241,7 @@ body {
 }
 
 .app-title {
-  font-size: 22px;
+  font-size: var(--font-header);
   font-weight: 600;
   color: white;
   margin: 0;
@@ -395,7 +416,7 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: -10px; /* push submit buttons lower (applies to OTP/submit areas) */
   transition: all 0.3s ease;
   text-transform: capitalize;
 }
@@ -782,8 +803,124 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 }
 
 .camera-logo-gradient img {
-  width: 60px !important;
-  height: 60px !important;
+  width: 80px !important;
+  height: 80px !important;
+}
+
+/* Welcome screen specific styles to match provided design */
+.welcome-bg {
+  background: linear-gradient(180deg, #253147 0%, #2b3750 35%, #5b2b57 70%, #c63281 100%);
+}
+
+.welcome-top-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.logo-pulse-large {
+  width: var(--chatcam-logo-size); /* main logo size (kept at 80×80 per request) */
+  height: var(--chatcam-logo-size); /* main logo size (kept at 80×80 per request) */
+  object-fit: contain;
+  margin-top: 20px; /* unified vertical position for logos across screens */
+  filter: drop-shadow(0 8px 30px rgba(0,0,0,0.6));
+}
+
+.welcome-text-img {
+  width: 220px; /* welcome text image width */
+  max-width: 78%;
+  margin-top: 40px; /* bring text closer to logo to allow button to sit lower */
+  object-fit: contain;
+}
+
+/* OTP screen logo sizing */
+.otp-logo {
+  width: var(--chatcam-logo-size); /* match chatcam logo 80×80 for screens 1-4 */
+  height: var(--chatcam-logo-size); /* match chatcam logo 80×80 for screens 1-4 */
+  object-fit: contain;
+  margin-top: 20px; /* align vertically with other screens' logo position */
+}
+
+.mobile-input-wrapper {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 28px; /* slightly reduced to fit unified layout */
+}
+
+.mobile-input-label {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.mobile-input-box {
+  display: flex;
+  align-items: center;
+  height: var(--auth-input-height); /* unified height for mobile and OTP fields */
+  padding: 0 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+
+.mobile-input-box span {
+  color: white;
+  font-size: var(--auth-font-size);
+  margin-right: 10px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-input-box input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: var(--auth-font-size);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.get-otp-btn {
+  width: 180px;
+  height: var(--auth-button-height);
+  line-height: var(--auth-button-height);
+  margin: 36px auto calc(var(--indicator-bottom) + var(--auth-button-gap)) auto;
+  display: block;
+  padding: 0 20px; /* vertical padding removed to keep fixed height */
+  background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.18);
+  color: white;
+  font-size: 18px;
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+.get-otp-btn.disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.bottom-indicator {
+  width: 140px;
+  height: 6px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 10px;
+  position: absolute; /* pinned to bottom of the app container */
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--indicator-bottom);
+  opacity: 0.9;
 }
 
 .terms-intro {
@@ -794,7 +931,7 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 
 .terms-intro h2 {
   color: white;
-  font-size: 24px;
+  font-size: var(--font-header);
   margin: 0 0 10px 0;
   font-weight: 600;
 }
@@ -807,10 +944,10 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 }
 
 .terms-box {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+  backdrop-filter: blur(12px);
   border-radius: 16px;
-  padding: 20px;
+  padding: 22px 20px;
   max-width: 100%;
   width: 100%;
   max-height: 45vh;
@@ -824,9 +961,63 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 
 .terms-box h3 {
   color: white;
-  font-size: 20px;
+  font-size: var(--font-small-header);
   margin: 0 0 10px 0;
   font-weight: 600;
+}
+
+/* Full-screen modal for viewing the complete Terms & Conditions */
+.terms-modal {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.terms-modal-card {
+  width: 100%;
+  max-width: 420px;
+  height: 100%;
+  max-height: 920px;
+  background: linear-gradient(180deg, rgba(16,24,40,0.96), rgba(107,45,88,0.96));
+  border-radius: 16px;
+  padding: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+}
+
+.terms-modal .terms-box {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.help-btn-icon {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.help-btn-icon:hover {
+  background: rgba(255,255,255,0.06);
 }
 
 .terms-updated {
@@ -854,9 +1045,11 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 
 .terms-buttons {
   display: flex;
-  gap: 15px;
-  max-width: 100%;
+  gap: 12px;
+  max-width: 420px;
   width: 100%;
+  margin-top: -10px;
+  justify-content: space-between;
 }
 
 .decline-btn,
@@ -865,16 +1058,17 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
   padding: 14px 24px;
   border: none;
   border-radius: 12px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .decline-btn {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255,255,255,0.12);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.25) inset;
 }
 
 .decline-btn:hover {
@@ -882,8 +1076,23 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
 }
 
 .accept-btn {
-  background: linear-gradient(135deg, #00F5FF 0%, #0099CC 100%);
+  background: linear-gradient(135deg, #00F5FF 0%, #00C9CC 60%);
   color: white;
+  box-shadow: 0 10px 30px rgba(0,201,204,0.22);
+}
+
+.accept-btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Ensure the terms card and buttons align center on mobile */
+.content > .terms-buttons {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0 12px;
 }
 
 .accept-btn:hover:not(.disabled) {
@@ -2249,21 +2458,21 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
   transform: translateY(-2px);
 }
 
-.edit-btn {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+.submit-btn {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.edit-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-}
-
-.post-btn {
-  background: linear-gradient(135deg, #00F5FF 0%, #00C9CC 100%);
+  border-radius: 12px;
+  padding: 0 32px; /* horizontal padding only, keep fixed height */
+  height: var(--auth-button-height);
+  line-height: var(--auth-button-height);
   color: white;
-  box-shadow: 0 4px 15px rgba(0, 245, 255, 0.3);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 0 auto calc(var(--indicator-bottom) + var(--auth-button-gap)) auto; /* match gap to indicator */
+  transition: all 0.3s ease;
+  text-transform: capitalize;
 }
 
 .post-btn:hover {
@@ -2975,3 +3184,21 @@ input[type="time"]::-webkit-datetime-edit-ampm-field {
   padding: 20px;
   font-style: italic;
 }
+
+/* Make OTP input sit lower to match Welcome screen mobile input position
+   The welcome screen has an extra welcome-text image pushing the input down.
+   On OTP screen we emulate that extra vertical offset so fields align. */
+.otp-logo ~ .mobile-input-wrapper {
+  margin-top: var(--otp-field-offset); /* tuned to match combined spacing on welcome screen */
+}
+
+/* Make Submit button align vertically with Get OTP button (same top margin and gap to indicator) */
+.submit-btn {
+  margin: var(--otp-submit-top) auto 0 auto; /* independent top margin for OTP submit */
+  height: var(--auth-button-height);
+  line-height: var(--auth-button-height);
+  padding: 0 32px;
+}
+
+/* Load Inter from Google Fonts to ensure visible change */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
