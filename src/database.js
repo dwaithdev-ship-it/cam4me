@@ -45,12 +45,12 @@ class DatabaseService {
   }
 
   // --- AUTH METHODS ---
-  async login(email, password, deviceId) {
+  async login(email, password /* deviceId removed */) {
     try {
       const response = await fetch(`${this.baseUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, device_id: deviceId })
+        body: JSON.stringify({ email, password })
       });
       const data = await response.json();
       if (response.ok) {

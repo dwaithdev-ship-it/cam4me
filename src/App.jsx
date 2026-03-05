@@ -104,7 +104,9 @@ function AppContent() {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [locationError, setLocationError] = useState('')
   const [selectedUids, setSelectedUids] = useState([]) // For bulk delete in admin
-  const [selectedCountryCode, setSelectedCountryCode] = useState('+91')
+  const COUNTRY_CODE = '+91'
+  const [selectedCountryCode, setSelectedCountryCode] = useState(COUNTRY_CODE)
+  const continueBtnImg = '/assets/continue_btn.png'
   const [hasScrolledTerms, setHasScrolledTerms] = useState(false)
   const [showDeclineAlert, setShowDeclineAlert] = useState(false)
   const termsBoxRef = useRef(null)
@@ -202,6 +204,176 @@ function AppContent() {
     cities: []
   };
 
+  // Default AP & TS master data taken from user-provided list (fallback when DB/master-data is empty)
+  const DEFAULT_AP_TS = {
+    "Telangana": {
+      "Adilabad": {
+        "Adilabad": ["Adilabad"],
+        "Boath": ["Boath"]
+      },
+      "Kumuram Bheem Asifabad": {
+        "Asifabad": ["Asifabad"],
+        "Khanapur": ["Khanapur"],
+        "Sirpur": ["Sirpur"]
+      },
+      "Nirmal": {
+        "Nirmal": ["Nirmal"],
+        "Mudhole": ["Mudhole"],
+        "Khanapur": ["Khanapur"]
+      },
+      "Mancherial": {
+        "Mancherial": ["Mancherial"],
+        "Bellampalli": ["Bellampalli"],
+        "Chennur": ["Chennur"]
+      },
+      "Nizamabad": {
+        "Nizamabad Urban": ["Nizamabad Urban"],
+        "Nizamabad Rural": ["Nizamabad Rural"],
+        "Armoor": ["Armoor"],
+        "Balkonda": ["Balkonda"]
+      },
+      "Kamareddy": {
+        "Kamareddy": ["Kamareddy"],
+        "Yellareddy": ["Yellareddy"],
+        "Banswada": ["Banswada"]
+      },
+      "Karimnagar": {
+        "Karimnagar": ["Karimnagar"],
+        "Huzurabad": ["Huzurabad"],
+        "Manakondur": ["Manakondur"],
+        "Choppadandi": ["Choppadandi"]
+      },
+      "Jagtial": {
+        "Jagtial": ["Jagtial"],
+        "Korutla": ["Korutla"],
+        "Dharmapuri": ["Dharmapuri"]
+      },
+      "Peddapalli": {
+        "Peddapalli": ["Peddapalli"],
+        "Ramagundam": ["Ramagundam"],
+        "Manthani": ["Manthani"]
+      },
+      "Rajanna Sircilla": {
+        "Sircilla": ["Sircilla"],
+        "Vemulawada": ["Vemulawada"]
+      },
+      "Siddipet": {
+        "Siddipet": ["Siddipet"],
+        "Husnabad": ["Husnabad"],
+        "Dubbak": ["Dubbak"],
+        "Gajwel": ["Gajwel"]
+      },
+      "Medak": {
+        "Medak": ["Medak"],
+        "Narsapur": ["Narsapur"]
+      },
+      "Sangareddy": {
+        "Sangareddy": ["Sangareddy"],
+        "Patancheru": ["Patancheru"],
+        "Zahirabad": ["Zahirabad"],
+        "Andole": ["Andole"],
+        "Narayankhed": ["Narayankhed"]
+      },
+      "Medchal-Malkajgiri": {
+        "Medchal": ["Medchal"],
+        "Malkajgiri": ["Malkajgiri"],
+        "Kukatpally": ["Kukatpally"],
+        "Quthbullapur": ["Quthbullapur"],
+        "Uppal": ["Uppal"]
+      },
+      "Hyderabad": {
+        "Musheerabad": ["Musheerabad"],
+        "Malakpet": ["Malakpet"],
+        "Amberpet": ["Amberpet"],
+        "Khairatabad": ["Khairatabad"],
+        "Jubilee Hills": ["Jubilee Hills"],
+        "Sanathnagar": ["Sanathnagar"],
+        "Nampally": ["Nampally"],
+        "Karwan": ["Karwan"],
+        "Goshamahal": ["Goshamahal"],
+        "Charminar": ["Charminar"],
+        "Chandrayanagutta": ["Chandrayanagutta"],
+        "Yakutpura": ["Yakutpura"],
+        "Bahadurpura": ["Bahadurpura"],
+        "Secunderabad": ["Secunderabad"],
+        "Secunderabad Cantt": ["Secunderabad Cantt"]
+      },
+      "Rangareddy": {
+        "Maheshwaram": ["Maheshwaram"],
+        "Rajendranagar": ["Rajendranagar"],
+        "Serilingampally": ["Serilingampally"],
+        "Ibrahimpatnam": ["Ibrahimpatnam"],
+        "Chevella": ["Chevella"],
+        "Shadnagar": ["Shadnagar"]
+      },
+      "Vikarabad": {
+        "Vikarabad": ["Vikarabad"],
+        "Pargi": ["Pargi"],
+        "Tandur": ["Tandur"],
+        "Kodangal": ["Kodangal"]
+      },
+      "Mahabubnagar": {
+        "Mahabubnagar": ["Mahabubnagar"],
+        "Jadcherla": ["Jadcherla"],
+        "Devarkadra": ["Devarkadra"]
+      },
+      "Nagarkurnool": {
+        "Nagarkurnool": ["Nagarkurnool"],
+        "Achampet": ["Achampet"],
+        "Kalwakurthy": ["Kalwakurthy"],
+        "Kollapur": ["Kollapur"]
+      },
+      "Wanaparthy": { "Wanaparthy": ["Wanaparthy"] },
+      "Narayanpet": { "Narayanpet": ["Narayanpet"], "Makthal": ["Makthal"] },
+      "Jogulamba Gadwal": { "Gadwal": ["Gadwal"], "Alampur": ["Alampur"] },
+      "Nalgonda": {
+        "Nalgonda": ["Nalgonda"],
+        "Munugode": ["Munugode"],
+        "Devarakonda": ["Devarakonda"],
+        "Nagarjuna Sagar": ["Nagarjuna Sagar"],
+        "Miryalaguda": ["Miryalaguda"]
+      },
+      "Suryapet": { "Huzurnagar": ["Huzurnagar"], "Kodad": ["Kodad"], "Suryapet": ["Suryapet"], "Thungathurthi": ["Thungathurthi"] },
+      "Yadadri Bhuvanagiri": { "Bhongir": ["Bhongir"], "Alair": ["Alair"] },
+      "Jangaon": { "Jangaon": ["Jangaon"], "Ghanpur Station": ["Ghanpur Station"], "Palakurthi": ["Palakurthi"] },
+      "Mahabubabad": { "Mahabubabad": ["Mahabubabad"], "Dornakal": ["Dornakal"] },
+      "Warangal": { "Warangal West": ["Warangal West"], "Warangal East": ["Warangal East"], "Wardhannapet": ["Wardhannapet"] },
+      "Hanumakonda": { "Hanumakonda": ["Hanumakonda"] },
+      "Mulugu": { "Mulugu": ["Mulugu"] },
+      "Jayashankar Bhupalpally": { "Bhupalpally": ["Bhupalpally"] },
+      "Bhadradri Kothagudem": { "Kothagudem": ["Kothagudem"], "Yellandu": ["Yellandu"], "Aswaraopeta": ["Aswaraopeta"], "Pinapaka": ["Pinapaka"], "Bhadrachalam": ["Bhadrachalam"] },
+      "Khammam": { "Khammam": ["Khammam"], "Palair": ["Palair"], "Madhira": ["Madhira"], "Wyra": ["Wyra"], "Sathupalli": ["Sathupalli"] }
+    },
+    "Andhra Pradesh": {
+      "Srikakulam": { "Ichchapuram": ["Ichchapuram"], "Palasa": ["Palasa"], "Tekkali": ["Tekkali"], "Pathapatnam": ["Pathapatnam"], "Srikakulam": ["Srikakulam"], "Amadalavalasa": ["Amadalavalasa"], "Etcherla": ["Etcherla"], "Narasannapeta": ["Narasannapeta"] },
+      "Vizianagaram": { "Rajam": ["Rajam"], "Bobbili": ["Bobbili"], "Cheepurupalle": ["Cheepurupalle"], "Gajapathinagaram": ["Gajapathinagaram"], "Nellimarla": ["Nellimarla"], "Vizianagaram": ["Vizianagaram"], "Srungavarapukota": ["Srungavarapukota"] },
+      "Parvathipuram Manyam": { "Palakonda": ["Palakonda"], "Kurupam": ["Kurupam"], "Parvathipuram": ["Parvathipuram"], "Salur": ["Salur"] },
+      "Visakhapatnam": { "Bhimili": ["Bhimili"], "Visakhapatnam East": ["Visakhapatnam East"], "Visakhapatnam South": ["Visakhapatnam South"], "Visakhapatnam North": ["Visakhapatnam North"], "Visakhapatnam West": ["Visakhapatnam West"], "Gajuwaka": ["Gajuwaka"] },
+      "Anakapalli": { "Chodavaram": ["Chodavaram"], "Madugula": ["Madugula"], "Anakapalli": ["Anakapalli"], "Pendurthi": ["Pendurthi"], "Elamanchili": ["Elamanchili"], "Payakaraopeta": ["Payakaraopeta"], "Narsipatnam": ["Narsipatnam"] },
+      "Alluri Sitharama Raju": { "Araku Valley": ["Araku Valley"], "Paderu": ["Paderu"], "Rampachodavaram": ["Rampachodavaram"] },
+      "Kakinada": { "Tuni": ["Tuni"], "Prathipadu": ["Prathipadu"], "Pithapuram": ["Pithapuram"], "Kakinada Rural": ["Kakinada Rural"], "Peddapuram": ["Peddapuram"], "Anaparthy": ["Anaparthy"], "Kakinada City": ["Kakinada City"] },
+      "East Godavari": { "Rajanagaram": ["Rajanagaram"], "Rajahmundry City": ["Rajahmundry City"], "Rajahmundry Rural": ["Rajahmundry Rural"], "Jaggampeta": ["Jaggampeta"], "Mandapeta": ["Mandapeta"], "Kothapeta": ["Kothapeta"], "Ramachandrapuram": ["Ramachandrapuram"] },
+      "Konaseema": { "Mummidivaram": ["Mummidivaram"], "Amalapuram": ["Amalapuram"], "Razole": ["Razole"], "Gannavaram (Konaseema)": ["Gannavaram (Konaseema)"], "Kothapeta": ["Kothapeta"], "Mandapeta": ["Mandapeta"] },
+      "West Godavari": { "Achanta": ["Achanta"], "Palacole": ["Palacole"], "Narasapuram": ["Narasapuram"], "Bhimavaram": ["Bhimavaram"], "Undi": ["Undi"], "Tanuku": ["Tanuku"], "Tadepalligudem": ["Tadepalligudem"] },
+      "Eluru": { "Unguturu": ["Unguturu"], "Denduluru": ["Denduluru"], "Eluru": ["Eluru"], "Gopalapuram": ["Gopalapuram"], "Polavaram": ["Polavaram"], "Chintalapudi": ["Chintalapudi"], "Kaikalur": ["Kaikalur"] },
+      "NTR": { "Tiruvuru": ["Tiruvuru"], "Nuzvid": ["Nuzvid"], "Gannavaram": ["Gannavaram"], "Vijayawada West": ["Vijayawada West"], "Vijayawada Central": ["Vijayawada Central"], "Vijayawada East": ["Vijayawada East"], "Jaggayyapeta": ["Jaggayyapeta"] },
+      "Krishna": { "Gudivada": ["Gudivada"], "Kaikalur": ["Kaikalur"], "Pedana": ["Pedana"], "Machilipatnam": ["Machilipatnam"], "Avanigadda": ["Avanigadda"], "Pamarru": ["Pamarru"], "Penamaluru": ["Penamaluru"] },
+      "Guntur": { "Tadikonda": ["Tadikonda"], "Mangalagiri": ["Mangalagiri"], "Ponnur": ["Ponnur"], "Tenali": ["Tenali"], "Prathipadu (Guntur)": ["Prathipadu (Guntur)"], "Guntur West": ["Guntur West"], "Guntur East": ["Guntur East"] },
+      "Palnadu": { "Pedakurapadu": ["Pedakurapadu"], "Chilakaluripet": ["Chilakaluripet"], "Narasaraopet": ["Narasaraopet"], "Sattenapalli": ["Sattenapalli"], "Vinukonda": ["Vinukonda"], "Gurazala": ["Gurazala"], "Macherla": ["Macherla"] },
+      "Bapatla": { "Vemuru": ["Vemuru"], "Repalle": ["Repalle"], "Bapatla": ["Bapatla"], "Parchur": ["Parchur"], "Addanki": ["Addanki"], "Chirala": ["Chirala"] },
+      "Prakasam": { "Yerragondapalem": ["Yerragondapalem"], "Darsi": ["Darsi"], "Ongole": ["Ongole"], "Kondapi": ["Kondapi"], "Markapuram": ["Markapuram"], "Giddalur": ["Giddalur"], "Kanigiri": ["Kanigiri"], "Kandukur": ["Kandukur"] },
+      "Nellore": { "Kavali": ["Kavali"], "Atmakur": ["Atmakur"], "Kovur": ["Kovur"], "Nellore City": ["Nellore City"], "Nellore Rural": ["Nellore Rural"], "Udayagiri": ["Udayagiri"], "Sarvepalli": ["Sarvepalli"] },
+      "Tirupati": { "Sullurpeta": ["Sullurpeta"], "Gudur": ["Gudur"], "Venkatagiri": ["Venkatagiri"], "Satyavedu": ["Satyavedu"], "Nagari": ["Nagari"], "Tirupati": ["Tirupati"] },
+      "Chittoor": { "Chittoor": ["Chittoor"], "Gangadhara Nellore": ["Gangadhara Nellore"], "Puthalapattu": ["Puthalapattu"], "Palamaner": ["Palamaner"], "Kuppam": ["Kuppam"], "Punganur": ["Punganur"], "Chandragiri": ["Chandragiri"] },
+      "Annamayya": { "Rajampet": ["Rajampet"], "Rayachoti": ["Rayachoti"], "Thamballapalle": ["Thamballapalle"], "Madanapalle": ["Madanapalle"], "Pileru": ["Pileru"], "Kodur": ["Kodur"] },
+      "YSR Kadapa": { "Badvel": ["Badvel"], "Kadapa": ["Kadapa"], "Kamalapuram": ["Kamalapuram"], "Jammalamadugu": ["Jammalamadugu"], "Proddatur": ["Proddatur"], "Mydukur": ["Mydukur"], "Pulivendula": ["Pulivendula"] },
+      "Nandyal": { "Allagadda": ["Allagadda"], "Srisailam": ["Srisailam"], "Nandikotkur": ["Nandikotkur"], "Panyam": ["Panyam"], "Nandyal": ["Nandyal"], "Banaganapalle": ["Banaganapalle"] },
+      "Kurnool": { "Kodumur": ["Kodumur"], "Kurnool": ["Kurnool"], "Pattikonda": ["Pattikonda"], "Yemmiganur": ["Yemmiganur"], "Mantralayam": ["Mantralayam"], "Adoni": ["Adoni"], "Alur": ["Alur"] },
+      "Anantapuramu": { "Rayadurg": ["Rayadurg"], "Uravakonda": ["Uravakonda"], "Guntakal": ["Guntakal"], "Tadipatri": ["Tadipatri"], "Singanamala": ["Singanamala"], "Anantapur Urban": ["Anantapur Urban"], "Kalyandurg": ["Kalyandurg"], "Raptadu": ["Raptadu"] },
+      "Sri Sathya Sai": { "Madakasira": ["Madakasira"], "Hindupur": ["Hindupur"], "Penukonda": ["Penukonda"], "Dharmavaram": ["Dharmavaram"], "Kadiri": ["Kadiri"], "Puttaparthi": ["Puttaparthi"] }
+    }
+  };
+
 
   const [masterData, setMasterData] = useState(INITIAL_MASTER_DATA);
   const [newStateName, setNewStateName] = useState('');
@@ -234,17 +406,12 @@ function AppContent() {
   // Device Helpers
   const getDeviceId = async () => {
     try {
-      const info = await Device.getId();
-      return info.identifier || info.uuid || 'web_' + Math.random().toString(36).substr(2, 9);
+      // Device recognition removed: return null to avoid tying accounts to devices
+      // Keep function for compatibility but do not persist or return a stable device id
+      return null;
     } catch (err) {
       console.warn('Failed to get device ID, using fallback:', err);
-      // Fallback for web or if Device API fails
-      let id = localStorage.getItem('chatcam_device_id');
-      if (!id) {
-        id = 'dev_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('chatcam_device_id', id);
-      }
-      return id;
+      return null;
     }
   };
 
@@ -425,10 +592,10 @@ function AppContent() {
   useEffect(() => {
     const initializeDevice = async () => {
       try {
-        const devId = await getDeviceId();
-        setDeviceId(devId);
-        console.log('[Device] Captured Device ID:', devId);
-        // Device recognition and auto-navigation disabled per client request.
+        // Remove any stored device id and disable device recognition completely
+        localStorage.removeItem('chatcam_device_id');
+        setDeviceId(null);
+        console.log('[Device] Device recognition disabled');
       } catch (err) {
         console.error('[Device] Initialization error:', err);
       }
@@ -459,41 +626,81 @@ function AppContent() {
   }
 
   const fetchLocationSuggestions = async (query, type) => {
-    if (!query || query.length < 1) {
-      setLocationSuggestions([]);
-      return;
-    }
     setIsFetchingLocation(true);
     try {
-      const q = query.toLowerCase();
+      const q = query ? query.toLowerCase() : '';
       let suggestions = [];
 
+      // Prefer masterData.locations; fallback to localLocationData or DEFAULT_AP_TS
+      let searchLocations = (masterData && masterData.locations && Object.keys(masterData.locations).length > 0)
+        ? masterData.locations
+        : (localLocationData || DEFAULT_AP_TS || {});
+
+      // If query is empty, return top-level lists depending on type
+      if (!q || q.length < 1) {
+        if (type === 'state_form') {
+          const topStates = Object.keys(searchLocations || {}).sort();
+          suggestions = topStates.slice(0, 15).map(s => ({ display: `${s} (State)`, name: s, type: 'state' }));
+          setLocationSuggestions(suggestions);
+          setIsFetchingLocation(false);
+          return;
+        }
+
+        if (type === 'district_form') {
+          const s = formData.state;
+          if (s && searchLocations && searchLocations[s]) {
+            const districts = Object.keys(searchLocations[s]).sort();
+            suggestions = districts.map(d => ({ display: `${d}, ${s} (District)`, name: d, state: s, type: 'district' })).slice(0, 15);
+          }
+          setLocationSuggestions(suggestions);
+          setIsFetchingLocation(false);
+          return;
+        }
+
+        if (type === 'constituency_form') {
+          const s = formData.state;
+          const d = formData.district;
+          if (s && d && searchLocations && searchLocations[s] && searchLocations[s][d]) {
+            const constis = Object.keys(searchLocations[s][d]).sort();
+            suggestions = constis.map(c => ({ display: `${c}, ${d}, ${s} (Constituency)`, name: c, state: s, district: d, type: 'constituency' })).slice(0, 15);
+          }
+          setLocationSuggestions(suggestions);
+          setIsFetchingLocation(false);
+          return;
+        }
+
+        // For other types, return empty by default
+        setLocationSuggestions([]);
+        setIsFetchingLocation(false);
+        return;
+      }
+
       // Hierarchy: State -> District -> Constituency -> Mandal -> Village
-      Object.entries(masterData.locations || {}).forEach(([stateName, districts]) => {
+      Object.entries(searchLocations || {}).forEach(([stateName, districts]) => {
         // State Match
         if (stateName.toLowerCase().includes(q)) {
           suggestions.push({ display: `${stateName} (State)`, name: stateName, type: 'state' });
         }
 
-        Object.entries(districts).forEach(([districtName, constituencies]) => {
+        Object.entries(districts || {}).forEach(([districtName, constituencies]) => {
           // District Match
           if (districtName.toLowerCase().includes(q)) {
             suggestions.push({ display: `${districtName}, ${stateName} (District)`, name: districtName, state: stateName, type: 'district' });
           }
 
-          Object.entries(constituencies).forEach(([constiName, mandals]) => {
+          Object.entries(constituencies || {}).forEach(([constiName, mandals]) => {
             // Constituency Match
             if (constiName.toLowerCase().includes(q)) {
               suggestions.push({ display: `${constiName}, ${districtName}, ${stateName} (Constituency)`, name: constiName, state: stateName, district: districtName, type: 'constituency' });
             }
 
-            Object.entries(mandals).forEach(([mandalName, villages]) => {
+            Object.entries(mandals || {}).forEach(([mandalName, villages]) => {
               // Mandal Match
               if (mandalName.toLowerCase().includes(q)) {
                 suggestions.push({ display: `${mandalName}, ${constiName}, ${districtName} (Mandal)`, name: mandalName, state: stateName, district: districtName, constituency: constiName, type: 'mandal' });
               }
 
-              villages.forEach(villageName => {
+              (villages || []).forEach(villageName => {
                 // Village Match
                 if (villageName.toLowerCase().includes(q)) {
                   suggestions.push({ display: `${villageName}, ${mandalName}, ${constiName}`, name: villageName, state: stateName, district: districtName, constituency: constiName, mandal: mandalName, type: 'village' });
@@ -513,9 +720,18 @@ function AppContent() {
 
       // Sort by length of match and limit
       suggestions = suggestions.sort((a, b) => a.display.length - b.display.length).slice(0, 15);
+
+      // If searching for states and nothing matched via traversal, try top-level keys (robust fallback)
+      if (type === 'state_form' && suggestions.length === 0) {
+        const topStates = Object.keys(searchLocations || {});
+        const stateMatches = topStates.filter(s => s.toLowerCase().includes(q)).slice(0, 15).map(s => ({ display: `${s} (State)`, name: s, type: 'state' }));
+        if (stateMatches.length > 0) suggestions = stateMatches;
+      }
+
       setLocationSuggestions(suggestions);
     } catch (err) {
       console.error('Error searching master data:', err);
+      setLocationSuggestions([]);
     } finally {
       setIsFetchingLocation(false);
     }
@@ -528,7 +744,7 @@ function AppContent() {
       if (data) {
         setMasterData(prev => ({
           ...prev,
-          locations: data.locations || prev.locations,
+          locations: data.locations || prev.locations || DEFAULT_AP_TS,
           categories: data.categories && data.categories.length > 0 ? data.categories : prev.categories,
           cities: data.cities && data.cities.length > 0 ? data.cities : prev.cities
         }));
@@ -541,7 +757,7 @@ function AppContent() {
       if (jsonData) {
         setMasterData(prev => ({
           ...prev,
-          locations: jsonData
+          locations: jsonData || DEFAULT_AP_TS
         }));
       }
     }
@@ -590,9 +806,10 @@ function AppContent() {
           setCurrentUser(user);
           if (user.selected_city) setSelectedCity(user.selected_city);
           if (user.selected_category) setSelectedCategory(user.selected_category);
-          setCurrentScreen('feed');
+          // Always start from the welcome screen on a browser refresh
+          setCurrentScreen('welcome_mobile');
         } else {
-          // 2. Not logged in — proceed with onboarding flow
+          // Not logged in — start from welcome screen (screen 1)
           setCurrentScreen('welcome_mobile');
         }
 
@@ -728,6 +945,8 @@ function AppContent() {
     }));
     setSelectedCity(data.selected_city || '');
     setSelectedCategory(data.selected_category || '');
+    // Autofill temporary mobile if present in profile
+    setTempMobile(data.mobile || '');
   };
 
   // Sync Post Text when entering 'newpost' screen
@@ -1052,13 +1271,12 @@ function AppContent() {
         email: authData.email,
         password: authData.password,
         name: formData.name,
-        username: authData.email.split('@')[0],
-        device_id: deviceId
+        username: authData.email.split('@')[0]
       });
 
       if (result.ok) {
         // Auto-login after signup
-        const loginRes = await database.login(authData.email, authData.password, deviceId);
+        const loginRes = await database.login(authData.email, authData.password);
         if (loginRes.ok) {
           setCurrentUser(loginRes.user);
           setIsNewSignupFlow(true);
@@ -1086,7 +1304,7 @@ function AppContent() {
   const handleSignIn = async (e) => {
     e.preventDefault();
     try {
-      const result = await database.login(authData.email, authData.password, deviceId);
+      const result = await database.login(authData.email, authData.password);
       if (result.ok) {
         setCurrentUser(result.user);
         // Sync profile data immediately from login response
@@ -1416,11 +1634,13 @@ function AppContent() {
   const handleCitySelect = (city) => {
     setSelectedCity(city)
     setShowCityList(false)
+    setProfileData(prev => ({ ...prev, city }))
   }
 
   const handleCategorySelect = (category) => {
     setSelectedCategory(category)
     setShowCategoryList(false)
+    setProfileData(prev => ({ ...prev, category }))
   }
 
   const handleSearchContinue = async () => {
@@ -2705,7 +2925,7 @@ function AppContent() {
                 onClick={() => currentAd.targetUrl && window.open(ensureAbsoluteUrl(currentAd.targetUrl), '_blank')}
                 style={{ cursor: 'pointer', position: 'relative', width: '100%' }}
               >
-                <div style={{ width: '100%', height: '150px', position: 'relative', background: '#222' }}>
+                <div style={{ width: '100%', height: '180px', position: 'relative', background: '#222' }}>
                   <img
                     src={currentAd.image_url || currentAd.imageUrl || currentAd.image}
                     alt="Ad"
@@ -2731,15 +2951,15 @@ function AppContent() {
             )}
           </div>
 
-          <div className="photo-upload-section" style={{ position: 'relative', marginBottom: '8px', marginTop: '5px' }}>
+          <div className="photo-upload-section" style={{ position: 'relative', marginBottom: '8px', marginTop: '8px' }}>
             <div
               onClick={handleTakePhoto}
               style={{
-                width: '95px',
-                height: '95px',
+                width: '220px',
+                height: '220px',
                 borderRadius: '50%',
-                border: '2px solid rgba(255, 255, 255, 0.4)',
-                background: 'rgba(255, 255, 255, 0.05)',
+                border: '2px solid rgba(255, 255, 255, 0.35)',
+                background: 'rgba(255, 255, 255, 0.03)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2762,22 +2982,22 @@ function AppContent() {
               onClick={handleTakePhoto}
               style={{
                 position: 'absolute',
-                bottom: '0px',
-                right: '2px',
-                width: '32px',
-                height: '32px',
+                bottom: '8px',
+                right: '8px',
+                width: '56px',
+                height: '56px',
                 background: '#2B4B7C',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                boxShadow: '0 6px 14px rgba(0,0,0,0.35)',
                 cursor: 'pointer',
-                border: '1px solid rgba(255,255,255,0.2)',
+                border: '1px solid rgba(255,255,255,0.18)',
                 zIndex: 2
               }}
             >
-              <img src={logoCamera} alt="Camera" style={{ width: '18px', height: '18px' }} />
+              <img src={logoCamera} alt="Camera" style={{ width: 28, height: 28 }} />
             </div>
           </div>
 
@@ -2798,276 +3018,9 @@ function AppContent() {
             <div className="underline-input-group">
               <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', display: 'block', marginBottom: '2px' }}>Mobile</label>
               <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.7)' }}>
-                <select
-                  className="country-select"
-                  disabled
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'white',
-                    padding: '8px 0',
-                    fontSize: '16px',
-                    outline: 'none',
-                    cursor: 'not-allowed',
-                    appearance: 'none',
-                    marginRight: '10px',
-                    minWidth: '60px',
-                    opacity: 0.6
-                  }}
-                  value={selectedCountryCode}
-                  onChange={(e) => setSelectedCountryCode(e.target.value)}
-                >
-                  {[
-                    { code: '+93', name: 'Afghanistan' },
-                    { code: '+355', name: 'Albania' },
-                    { code: '+213', name: 'Algeria' },
-                    { code: '+1-684', name: 'American Samoa' },
-                    { code: '+376', name: 'Andorra' },
-                    { code: '+244', name: 'Angola' },
-                    { code: '+1-264', name: 'Anguilla' },
-                    { code: '+672', name: 'Antarctica' },
-                    { code: '+1-268', name: 'Antigua and Barbuda' },
-                    { code: '+54', name: 'Argentina' },
-                    { code: '+374', name: 'Armenia' },
-                    { code: '+297', name: 'Aruba' },
-                    { code: '+61', name: 'Australia' },
-                    { code: '+43', name: 'Austria' },
-                    { code: '+994', name: 'Azerbaijan' },
-                    { code: '+1-242', name: 'Bahamas' },
-                    { code: '+973', name: 'Bahrain' },
-                    { code: '+880', name: 'Bangladesh' },
-                    { code: '+1-246', name: 'Barbados' },
-                    { code: '+375', name: 'Belarus' },
-                    { code: '+32', name: 'Belgium' },
-                    { code: '+501', name: 'Belize' },
-                    { code: '+229', name: 'Benin' },
-                    { code: '+1-441', name: 'Bermuda' },
-                    { code: '+975', name: 'Bhutan' },
-                    { code: '+591', name: 'Bolivia' },
-                    { code: '+387', name: 'Bosnia and Herzegovina' },
-                    { code: '+267', name: 'Botswana' },
-                    { code: '+55', name: 'Brazil' },
-                    { code: '+246', name: 'British Indian Ocean Territory' },
-                    { code: '+1-284', name: 'British Virgin Islands' },
-                    { code: '+673', name: 'Brunei' },
-                    { code: '+359', name: 'Bulgaria' },
-                    { code: '+226', name: 'Burkina Faso' },
-                    { code: '+257', name: 'Burundi' },
-                    { code: '+855', name: 'Cambodia' },
-                    { code: '+237', name: 'Cameroon' },
-                    { code: '+1', name: 'Canada' },
-                    { code: '+238', name: 'Cape Verde' },
-                    { code: '+1-345', name: 'Cayman Islands' },
-                    { code: '+236', name: 'Central African Republic' },
-                    { code: '+235', name: 'Chad' },
-                    { code: '+56', name: 'Chile' },
-                    { code: '+86', name: 'China' },
-                    { code: '+61', name: 'Christmas Island' },
-                    { code: '+61', name: 'Cocos (Keeling) Islands' },
-                    { code: '+57', name: 'Colombia' },
-                    { code: '+269', name: 'Comoros' },
-                    { code: '+682', name: 'Cook Islands' },
-                    { code: '+506', name: 'Costa Rica' },
-                    { code: '+385', name: 'Croatia' },
-                    { code: '+53', name: 'Cuba' },
-                    { code: '+599', name: 'Curacao' },
-                    { code: '+357', name: 'Cyprus' },
-                    { code: '+420', name: 'Czech Republic' },
-                    { code: '+243', name: 'Democratic Republic of the Congo' },
-                    { code: '+45', name: 'Denmark' },
-                    { code: '+253', name: 'Djibouti' },
-                    { code: '+1-767', name: 'Dominica' },
-                    { code: '+1-809', name: 'Dominican Republic' },
-                    { code: '+1-829', name: 'Dominican Republic' },
-                    { code: '+1-849', name: 'Dominican Republic' },
-                    { code: '+670', name: 'East Timor' },
-                    { code: '+593', name: 'Ecuador' },
-                    { code: '+20', name: 'Egypt' },
-                    { code: '+503', name: 'El Salvador' },
-                    { code: '+240', name: 'Equatorial Guinea' },
-                    { code: '+291', name: 'Eritrea' },
-                    { code: '+372', name: 'Estonia' },
-                    { code: '+251', name: 'Ethiopia' },
-                    { code: '+500', name: 'Falkland Islands' },
-                    { code: '+298', name: 'Faroe Islands' },
-                    { code: '+679', name: 'Fiji' },
-                    { code: '+358', name: 'Finland' },
-                    { code: '+33', name: 'France' },
-                    { code: '+689', name: 'French Polynesia' },
-                    { code: '+241', name: 'Gabon' },
-                    { code: '+220', name: 'Gambia' },
-                    { code: '+995', name: 'Georgia' },
-                    { code: '+49', name: 'Germany' },
-                    { code: '+233', name: 'Ghana' },
-                    { code: '+350', name: 'Gibraltar' },
-                    { code: '+30', name: 'Greece' },
-                    { code: '+299', name: 'Greenland' },
-                    { code: '+1-473', name: 'Grenada' },
-                    { code: '+1-671', name: 'Guam' },
-                    { code: '+502', name: 'Guatemala' },
-                    { code: '+44-1481', name: 'Guernsey' },
-                    { code: '+224', name: 'Guinea' },
-                    { code: '+245', name: 'Guinea-Bissau' },
-                    { code: '+592', name: 'Guyana' },
-                    { code: '+509', name: 'Haiti' },
-                    { code: '+504', name: 'Honduras' },
-                    { code: '+852', name: 'Hong Kong' },
-                    { code: '+36', name: 'Hungary' },
-                    { code: '+354', name: 'Iceland' },
-                    { code: '+91', name: 'India' },
-                    { code: '+62', name: 'Indonesia' },
-                    { code: '+98', name: 'Iran' },
-                    { code: '+964', name: 'Iraq' },
-                    { code: '+353', name: 'Ireland' },
-                    { code: '+44-1624', name: 'Isle of Man' },
-                    { code: '+972', name: 'Israel' },
-                    { code: '+39', name: 'Italy' },
-                    { code: '+225', name: 'Ivory Coast' },
-                    { code: '+1-876', name: 'Jamaica' },
-                    { code: '+81', name: 'Japan' },
-                    { code: '+44-1534', name: 'Jersey' },
-                    { code: '+962', name: 'Jordan' },
-                    { code: '+7', name: 'Kazakhstan' },
-                    { code: '+254', name: 'Kenya' },
-                    { code: '+686', name: 'Kiribati' },
-                    { code: '+383', name: 'Kosovo' },
-                    { code: '+965', name: 'Kuwait' },
-                    { code: '+996', name: 'Kyrgyzstan' },
-                    { code: '+856', name: 'Laos' },
-                    { code: '+371', name: 'Latvia' },
-                    { code: '+961', name: 'Lebanon' },
-                    { code: '+266', name: 'Lesotho' },
-                    { code: '+231', name: 'Liberia' },
-                    { code: '+218', name: 'Libya' },
-                    { code: '+423', name: 'Liechtenstein' },
-                    { code: '+370', name: 'Lithuania' },
-                    { code: '+352', name: 'Luxembourg' },
-                    { code: '+853', name: 'Macau' },
-                    { code: '+389', name: 'North Macedonia' },
-                    { code: '+261', name: 'Madagascar' },
-                    { code: '+265', name: 'Malawi' },
-                    { code: '+60', name: 'Malaysia' },
-                    { code: '+960', name: 'Maldives' },
-                    { code: '+223', name: 'Mali' },
-                    { code: '+356', name: 'Malta' },
-                    { code: '+692', name: 'Marshall Islands' },
-                    { code: '+222', name: 'Mauritania' },
-                    { code: '+230', name: 'Mauritius' },
-                    { code: '+262', name: 'Mayotte' },
-                    { code: '+52', name: 'Mexico' },
-                    { code: '+691', name: 'Micronesia' },
-                    { code: '+373', name: 'Moldova' },
-                    { code: '+377', name: 'Monaco' },
-                    { code: '+976', name: 'Mongolia' },
-                    { code: '+382', name: 'Montenegro' },
-                    { code: '+1-664', name: 'Montserrat' },
-                    { code: '+212', name: 'Morocco' },
-                    { code: '+258', name: 'Mozambique' },
-                    { code: '+95', name: 'Myanmar' },
-                    { code: '+264', name: 'Namibia' },
-                    { code: '+674', name: 'Nauru' },
-                    { code: '+977', name: 'Nepal' },
-                    { code: '+31', name: 'Netherlands' },
-                    { code: '+599', name: 'Netherlands Antilles' },
-                    { code: '+687', name: 'New Caledonia' },
-                    { code: '+64', name: 'New Zealand' },
-                    { code: '+505', name: 'Nicaragua' },
-                    { code: '+227', name: 'Niger' },
-                    { code: '+234', name: 'Nigeria' },
-                    { code: '+683', name: 'Niue' },
-                    { code: '+672', name: 'Norfolk Island' },
-                    { code: '+850', name: 'North Korea' },
-                    { code: '+1-670', name: 'Northern Mariana Islands' },
-                    { code: '+47', name: 'Norway' },
-                    { code: '+968', name: 'Oman' },
-                    { code: '+92', name: 'Pakistan' },
-                    { code: '+680', name: 'Palau' },
-                    { code: '+970', name: 'Palestine' },
-                    { code: '+507', name: 'Panama' },
-                    { code: '+675', name: 'Papua New Guinea' },
-                    { code: '+595', name: 'Paraguay' },
-                    { code: '+51', name: 'Peru' },
-                    { code: '+63', name: 'Philippines' },
-                    { code: '+64', name: 'Pitcairn' },
-                    { code: '+48', name: 'Poland' },
-                    { code: '+351', name: 'Portugal' },
-                    { code: '+1-787', name: 'Puerto Rico' },
-                    { code: '+1-939', name: 'Puerto Rico' },
-                    { code: '+974', name: 'Qatar' },
-                    { code: '+242', name: 'Republic of the Congo' },
-                    { code: '+262', name: 'Reunion' },
-                    { code: '+40', name: 'Romania' },
-                    { code: '+7', name: 'Russia' },
-                    { code: '+250', name: 'Rwanda' },
-                    { code: '+590', name: 'Saint Barthelemy' },
-                    { code: '+290', name: 'Saint Helena' },
-                    { code: '+1-869', name: 'Saint Kitts and Nevis' },
-                    { code: '+1-758', name: 'Saint Lucia' },
-                    { code: '+590', name: 'Saint Martin' },
-                    { code: '+508', name: 'Saint Pierre and Miquelon' },
-                    { code: '+1-784', name: 'Saint Vincent and the Grenadines' },
-                    { code: '+685', name: 'Samoa' },
-                    { code: '+378', name: 'San Marino' },
-                    { code: '+239', name: 'Sao Tome and Principe' },
-                    { code: '+966', name: 'Saudi Arabia' },
-                    { code: '+221', name: 'Senegal' },
-                    { code: '+381', name: 'Serbia' },
-                    { code: '+248', name: 'Seychelles' },
-                    { code: '+232', name: 'Sierra Leone' },
-                    { code: '+65', name: 'Singapore' },
-                    { code: '+1-721', name: 'Sint Maarten' },
-                    { code: '+421', name: 'Slovakia' },
-                    { code: '+386', name: 'Slovenia' },
-                    { code: '+677', name: 'Solomon Islands' },
-                    { code: '+252', name: 'Somalia' },
-                    { code: '+27', name: 'South Africa' },
-                    { code: '+82', name: 'South Korea' },
-                    { code: '+211', name: 'South Sudan' },
-                    { code: '+34', name: 'Spain' },
-                    { code: '+94', name: 'Sri Lanka' },
-                    { code: '+249', name: 'Sudan' },
-                    { code: '+597', name: 'Suriname' },
-                    { code: '+47', name: 'Svalbard and Jan Mayen' },
-                    { code: '+268', name: 'Eswatini' },
-                    { code: '+46', name: 'Sweden' },
-                    { code: '+41', name: 'Switzerland' },
-                    { code: '+963', name: 'Syria' },
-                    { code: '+886', name: 'Taiwan' },
-                    { code: '+992', name: 'Tajikistan' },
-                    { code: '+255', name: 'Tanzania' },
-                    { code: '+66', name: 'Thailand' },
-                    { code: '+228', name: 'Togo' },
-                    { code: '+690', name: 'Tokelau' },
-                    { code: '+676', name: 'Tonga' },
-                    { code: '+1-868', name: 'Trinidad and Tobago' },
-                    { code: '+216', name: 'Tunisia' },
-                    { code: '+90', name: 'Turkey' },
-                    { code: '+993', name: 'Turkmenistan' },
-                    { code: '+1-649', name: 'Turks and Caicos Islands' },
-                    { code: '+688', name: 'Tuvalu' },
-                    { code: '+1-340', name: 'U.S. Virgin Islands' },
-                    { code: '+256', name: 'Uganda' },
-                    { code: '+380', name: 'Ukraine' },
-                    { code: '+971', name: 'UAE' },
-                    { code: '+44', name: 'UK' },
-                    { code: '+1', name: 'USA' },
-                    { code: '+598', name: 'Uruguay' },
-                    { code: '+998', name: 'Uzbekistan' },
-                    { code: '+678', name: 'Vanuatu' },
-                    { code: '+379', name: 'Vatican' },
-                    { code: '+58', name: 'Venezuela' },
-                    { code: '+84', name: 'Vietnam' },
-                    { code: '+681', name: 'Wallis and Futuna' },
-                    { code: '+212', name: 'Western Sahara' },
-                    { code: '+967', name: 'Yemen' },
-                    { code: '+260', name: 'Zambia' },
-                    { code: '+263', name: 'Zimbabwe' },
-                  ].map(c => (
-                    <option key={c.code + c.name} value={c.code}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ minWidth: '60px', marginRight: '10px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 6px', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span style={{ color: 'white', fontSize: '16px' }}>{COUNTRY_CODE}</span>
+                </div>
                 <input
                   type="text"
                   className="underline-input"
@@ -3104,9 +3057,9 @@ function AppContent() {
               </select>
             </div>
 
-            <div style={{ marginTop: '-10px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ marginTop: '-6px', width: '100%', display: 'flex', justifyContent: 'center' }}>
               <button
-                className={`premium-continue-btn`}
+                className={`continue-btn-custom`}
                 onClick={async () => {
                   if (!canContinue) {
                     let missing = [];
@@ -3117,201 +3070,126 @@ function AppContent() {
                     return;
                   }
 
-                  console.log('[ProfileSetup] Continue clicked. currentUser:', currentUser?.uid);
-
-                  // Ensure we have a user
+                  // Save profile and navigate to location selection
                   const user = currentUser;
+                  const finalData = {
+                    ...formData,
+                    uid: user?.uid,
+                    email: user?.email,
+                    name: profileData.name || formData.name,
+                    mobile: tempMobile || formData.mobile,
+                    photo: profileData.photo,
+                    selectedCity: profileData.city,
+                    selectedCategory: profileData.category,
+                    setupCompleted: true,
+                    termsAccepted: true,
+                    hasCompletedOnboarding: true,
+                    lastIP: deviceIP || '0.0.0.0',
+                    lastLoginTime: new Date().toISOString()
+                  };
 
-                  if (user) {
-                    const finalData = {
-                      ...formData,
-                      uid: user.uid,
-                      email: user.email,
-                      name: profileData.name || formData.name,
-                      mobile: tempMobile || formData.mobile,
-                      photo: profileData.photo,
-                      selectedCity: profileData.city,
-                      selectedCategory: profileData.category,
-                      setupCompleted: true,
-                      termsAccepted: true,
-                      hasCompletedOnboarding: true,
-                      trustedDeviceId: await getDeviceId(),
-                      lastDeviceId: await getDeviceId(),
-                      lastIP: deviceIP || '0.0.0.0', // NON-BLOCKING
-                      lastLoginTime: new Date().toISOString()
-                    };
-
-                    // OPTIMISTIC NAVIGATION: Transition immediately
-                    setPreviousScreen('profile_setup');
-                    setCurrentScreen('location');
-                    setHasCompletedOnboarding(true);
-                    localStorage.setItem('onboarding_complete', 'true');
-                    localStorage.setItem(`cam4me_user_${user.uid}`, JSON.stringify(finalData));
-
-                    // Background saves (non-blocking) via Postgres API
-                    database.saveUser(finalData).catch(navErr => console.error('[ProfileSetup] DB Error:', navErr));
-
-                    // Update state
+                  try {
+                    if (user) {
+                      database.saveUser(finalData).catch(e => console.error('Save user error', e));
+                    }
                     setProfileData(prev => ({ ...prev, ...finalData }));
-                  } else {
-                    console.warn('[ProfileSetup] No user found for save');
-                    // Fallback for demo or if something went wrong with auth state but we have data
-                    setPreviousScreen('profile_setup');
-                    setCurrentScreen('location');
+                    localStorage.setItem('onboarding_complete', 'true');
+                    if (user && user.uid) localStorage.setItem('cam4me_user_' + user.uid, JSON.stringify(finalData));
+                  } catch (e) {
+                    console.error('Profile save failed', e);
                   }
+
+                  setPreviousScreen('profile_setup');
+                  setCurrentScreen('location');
+                  setHasCompletedOnboarding(true);
                 }}
-                style={{
-                  width: '75%',
-                  padding: '12px',
-                  background: canContinue ? '#2B4B7C' : 'rgba(255, 255, 255, 0.1)',
-                  border: canContinue ? 'none' : '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '16px',
-                  color: 'white',
-                  fontSize: '28px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(10px)',
-                  transition: 'all 0.3s ease'
+              >
+                continue
+              </button>
+            </div>
+
+            {/* Bottom indicator bar (matching other auth screens) */}
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 18 }}>
+              <div className="bottom-indicator"></div>
+            </div>
+
+          </div> {/* end underline-form */}
+        </div> {/* end content */}
+      </div>
+      
+    );
+  }
+
+  // 5th Screen: Sign-Up Options
+  if (currentScreen === 'signup_options') {
+    return (
+      <div className="app-container">
+        <div className="status-bar">
+          <img src={logoBubble} alt="logo" style={{ width: 44, height: 44 }} />
+        </div>
+
+        <div className="content">
+          <img src={(ads && ads[0] && ads[0].image) || logoCamera} alt="ad" className="ad-banner" />
+
+          <div style={{ height: 18 }} />
+
+          <div style={{ position: 'relative', width: 220, height: 220, margin: '0 auto' }}>
+            <div className="profile-circle" style={{ width: 220, height: 220 }}>
+              {profileData.photo ? (
+                <img src={profileData.photo} alt="profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }} />
+              )}
+            </div>
+
+            <button
+              className="camera-overlay"
+              onClick={() => setShowProfileImagePicker(true)}
+              title="Update photo"
+              style={{ position: 'absolute', right: -6, bottom: 6, border: 'none', background: 'transparent', cursor: 'pointer' }}
+            >
+              <img src={logoCamera} alt="camera" style={{ width: 52, height: 52 }} />
+            </button>
+          </div>
+
+          <div className="form" style={{ marginTop: 18, width: '100%', padding: '0 12px' }}>
+            <div className="form-group">
+              <label>ProfileName</label>
+              <input value={profileData.name || ''} onChange={(e) => setProfileData({ ...profileData, name: e.target.value })} placeholder="ProfileName" />
+            </div>
+
+            <div className="form-group">
+              <label>Mobill</label>
+              <input value={profileData.mobile || ''} onChange={(e) => setProfileData({ ...profileData, mobile: e.target.value })} placeholder="+91" />
+            </div>
+
+            <div className="form-group">
+              <label>City</label>
+              <input value={selectedCity || profileData.city || ''} onChange={(e) => { setSelectedCity(e.target.value); setProfileData({ ...profileData, city: e.target.value }); }} placeholder="City" />
+            </div>
+
+            <div className="form-group">
+              <label>Category</label>
+              <input value={selectedCategory || profileData.category || ''} onChange={(e) => { setSelectedCategory(e.target.value); setProfileData({ ...profileData, category: e.target.value }); }} placeholder="Category" />
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              <button
+                type="button"
+                className="continue-btn-custom"
+                onClick={() => {
+                  if (!profileData.name || !profileData.mobile) {
+                    alert('Please enter profile name and mobile');
+                    return;
+                  }
+                  setHasCompletedOnboarding(true);
+                  setCurrentScreen('feed');
                 }}
               >
                 continue
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    )
-  }
-
-  // 5th Screen: Sign-Up Options
-  if (currentScreen === 'signup_options') {
-    const isFormValid = authData.email.includes('@') && authData.password.length >= 6 && authData.password === authData.confirmPassword;
-
-    return (
-      <div className="app-container">
-        <div className="status-bar">
-          <span className="time">{time}</span>
-        </div>
-
-        <div className="content">
-          <div className="camera-logo-gradient" style={{ marginBottom: '20px' }}>
-            <img src="/logo_bubble.png" className="logo-pulse" alt="Logo" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
-          </div>
-
-          <h1 className="auth-title">Sign Up</h1>
-
-          <form onSubmit={handleSignUp} className="auth-form">
-            <div className="form-group">
-              <label>Email address</label>
-              <input
-                type="email"
-                name="email"
-                value={authData.email}
-                onChange={handleAuthChange}
-                placeholder="Enter email"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Create Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={authData.password}
-                  onChange={handleAuthChange}
-                  placeholder="Create password"
-                  required
-                  minLength="6"
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer',
-                    padding: '4px'
-                  }}
-                >
-                  {showPassword ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                      <line x1="1" y1="1" x2="23" y2="23"></line>
-                    </svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                      <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Confirm Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={authData.confirmPassword}
-                  onChange={handleAuthChange}
-                  placeholder="Confirm password"
-                  required
-                  minLength="6"
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer',
-                    padding: '4px'
-                  }}
-                >
-                  {showConfirmPassword ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                      <line x1="1" y1="1" x2="23" y2="23"></line>
-                    </svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                      <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                  )}
-                </button>
-              </div>
-              {authData.confirmPassword && authData.password !== authData.confirmPassword && (
-                <span style={{ color: '#FF5252', fontSize: '12px', marginTop: '4px', fontWeight: 'bold' }}>Passwords do not match!</span>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className={`auth-submit-btn ${!isFormValid ? 'disabled' : ''}`}
-              disabled={!isFormValid}
-            >
-              Create Account
-            </button>
-          </form>
-
-
 
           <div className="auth-footer">
             <span>Already have account? </span>
@@ -3335,9 +3213,9 @@ function AppContent() {
               </button>
             </div>
           </div>
-        </div >
-      </div >
-    )
+        </div>
+      </div>
+    );
   }
 
   // Sign In Screen
@@ -3733,78 +3611,74 @@ function AppContent() {
             </div>
           </div>
 
-          {/* Top Ad - Fixed 16:9 ratio */}
-          {topAd && (
-            <div className="ad-banner search-ad-top" style={{
-              width: '100%',
-              height: 'auto',
-              aspectRatio: '16/9',
-              position: 'relative',
-              overflow: 'hidden',
-              borderRadius: '12px',
-              background: '#000',
-              flexShrink: 0
-            }}>
-              <span className="ad-label" style={{ position: 'absolute', top: '5px', right: '5px', zIndex: 10, background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff' }}>Ad</span>
-              <a href={ensureAbsoluteUrl(topAd.link)} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
-                <img src={topAd.image_url || topAd.image} alt="Advertisement" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                {topAd.text && (
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>
-                    {topAd.text}
+          {/* Top Ad placeholder - reserved space for admin ads */}
+          <div className="ad-banner search-ad-top" style={{
+            width: '100%',
+            height: 'auto',
+            aspectRatio: '16/9',
+            position: 'relative',
+            overflow: 'hidden',
+            borderRadius: '12px',
+            background: topAd ? '#000' : 'linear-gradient(180deg,#1a1a1a,#222)',
+            flexShrink: 0
+          }}>
+            {topAd ? (
+              <>
+                <span className="ad-label" style={{ position: 'absolute', top: '5px', right: '5px', zIndex: 10, background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff' }}>Ad</span>
+                <a href={ensureAbsoluteUrl(topAd.link)} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+                  <img src={topAd.image_url || topAd.image} alt="Advertisement" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {topAd.text && (
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>
+                      {topAd.text}
+                    </div>
+                  )}
+                </a>
+              </>
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>Sponsored Ad</div>
+            )}
+          </div>
+
+          {/* Two-column City & Category panels */}
+          <div style={{ display: 'flex', gap: '12px', margin: '5px 0', flexShrink: 0, alignItems: 'stretch' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px 12px 0 0', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: '22px', color: 'white', fontWeight: '700' }}>City</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="text" placeholder="Search city" value={citySearch} onChange={(e) => setCitySearch(e.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: 'none', outline: 'none', background: 'rgba(255,255,255,0.03)', color: 'white' }} />
+                  <button onClick={() => { setCitySearch(''); setShowCityList(!showCityList); }} style={{ background: 'transparent', border: 'none', color: '#00F5FF', cursor: 'pointer' }} aria-label="Search">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00F5FF" strokeWidth="2"><circle cx="11" cy="11" r="6"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  </button>
+                </div>
+              </div>
+              <div style={{ flex: 1, minHeight: '260px', background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))', border: '1px solid rgba(255,255,255,0.06)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflowY: 'auto', padding: '10px' }}>
+                {(cities || []).filter(c => c.toLowerCase().includes((citySearch || '').toLowerCase())).map((city, idx) => (
+                  <div key={idx} onClick={() => handleCitySelect(city)} style={{ padding: '12px', marginBottom: '6px', borderRadius: '8px', background: (selectedCity === city || profileData.city === city) ? 'rgba(0,245,255,0.06)' : 'transparent', color: 'white', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.02)' }}>
+                    {city}
                   </div>
-                )}
-              </a>
-            </div>
-          )}
-
-          <div className="search-buttons" style={{ display: 'flex', gap: '15px', margin: '5px 0', flexShrink: 0 }}>
-            <div className="search-btn-container" style={{ flex: 1, position: 'relative' }}>
-              <button
-                className={`search-btn city-btn ${showCityList ? 'expanded' : ''}`}
-                onClick={() => setShowCityList(!showCityList)}
-                style={{ width: '100%', padding: '15px 10px', borderRadius: '12px', background: 'linear-gradient(135deg, #00F5FF 0%, #0099CC 100%)', color: 'white', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,245,255,0.3)' }}
-              >
-                <span>{selectedCity || profileData.city || 'City'}</span>
-              </button>
-              {showCityList && (
-                <div className="dropdown-list city-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, maxHeight: '200px', overflowY: 'auto', borderRadius: '0 0 12px 12px', background: 'rgba(20,30,50,0.98)' }}>
-                  {cities.length > 0 ? cities.map((city, index) => (
-                    <div key={index} className={`dropdown-item ${selectedCity === city ? 'selected' : ''}`} onClick={() => handleCitySelect(city)} style={{ padding: '12px 16px', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
-                      {city}
-                    </div>
-                  )) : (
-                    <div style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>Loading cities...</div>
-                  )}
-                </div>
-              )}
+                ))}
+              </div>
             </div>
 
-            <div className="search-btn-container" style={{ flex: 1, position: 'relative' }}>
-              <button
-                className={`search-btn category-btn ${showCategoryList ? 'expanded' : ''}`}
-                onClick={() => setShowCategoryList(!showCategoryList)}
-                style={{ width: '100%', padding: '15px 10px', borderRadius: '12px', background: 'linear-gradient(135deg, #FF00FF 0%, #8B2E5E 100%)', color: 'white', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255,0,255,0.3)' }}
-              >
-                <span>{selectedCategory || profileData.category || 'Category'}</span>
-              </button>
-              {showCategoryList && (
-                <div className="dropdown-list category-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, maxHeight: '200px', overflowY: 'auto', borderRadius: '0 0 12px 12px', background: 'rgba(20,30,50,0.98)' }}>
-                  {categories.length > 0 ? categories.map((category, index) => (
-                    <div key={index} className={`dropdown-item ${selectedCategory === category ? 'selected' : ''}`} onClick={() => handleCategorySelect(category)} style={{ padding: '12px 16px', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
-                      {category}
-                    </div>
-                  )) : (
-                    <div style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>Loading categories...</div>
-                  )}
-                </div>
-              )}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px 12px 0 0', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: '22px', color: 'white', fontWeight: '700' }}>Category</div>
+              </div>
+              <div style={{ flex: 1, minHeight: '260px', background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))', border: '1px solid rgba(255,255,255,0.06)', borderTop: 'none', borderRadius: '0 0 12px 12px', overflowY: 'auto', padding: '10px' }}>
+                {(categories || []).map((category, idx) => (
+                  <div key={idx} onClick={() => handleCategorySelect(category)} style={{ padding: '12px', marginBottom: '6px', borderRadius: '8px', background: (selectedCategory === category || profileData.category === category) ? 'rgba(255,0,255,0.06)' : 'transparent', color: 'white', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.02)' }}>
+                    {category}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div style={{ padding: '0', flexShrink: 0 }}>
-            {(selectedCity || profileData.city) && (selectedCategory || profileData.category) && (
-              <button className="search-continue-btn" onClick={handleSearchContinue} style={{ width: '100%', padding: '15px', borderRadius: '12px', background: '#00F5FF', color: '#001f3f', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,245,255,0.5)' }}>
-                Continue
+          <div style={{ padding: '0', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+            {((selectedCity || profileData.city) && (selectedCategory || profileData.category)) && (
+              <button className="continue-btn-custom" onClick={handleSearchContinue} style={{ width: '75%', position: 'relative' }}>
+                <img src={continueBtnImg} alt="continue" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 24 }} />
+                <span style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontSize: '24px', fontWeight: 900, color: '#fff', textTransform: 'lowercase' }}>continue</span>
               </button>
             )}
           </div>
@@ -6664,7 +6538,7 @@ function AppContent() {
                   opacity: formData.district ? 1 : 0.5
                 }}
               >
-                <option value="" style={{ color: 'black' }}>Select Constituency</option>
+                <option value="" style={{ color: 'black' }}>Select City</option>
                 {availableConstituencies.map(c => <option key={c} value={c} style={{ color: 'black' }}>{c}</option>)}
               </select>
             </div>
@@ -7215,6 +7089,11 @@ function AppContent() {
                   )}
                 </div>
               </div>
+
+              {/* Bottom indicator for consistency with onboarding screens */}
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <div className="bottom-indicator"></div>
+              </div>
             </div>
           )
           }
@@ -7418,36 +7297,16 @@ function AppContent() {
           </div>
 
           <div className="content">
-            <div style={{ width: '100%', display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-              <button
-                onClick={() => setCurrentScreen('search')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'white',
-                  cursor: 'pointer',
-                  padding: '10px'
-                }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-                </svg>
-              </button>
-              <div className="logo-container" style={{ flex: 1, marginRight: '44px' }}>
+            <div style={{ width: '100%', display: 'flex', alignItems: 'center', marginBottom: '6px', justifyContent: 'center' }}>
+              <div className="logo-container" style={{ margin: 0 }}>
                 <img src="/logo_bubble.png" alt="Chatcam Logo" className="logo-image" />
-                <h1 className="app-title">Chatcam</h1>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="form">
+            <form onSubmit={handleSubmit} className="form" style={{ paddingTop: '0px', gap: '10px' }}>
               <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <label style={{ display: 'block', width: '100%' }}>
                   <span>Full Name</span>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }} onClick={() => alert('Enter your full name')}>
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
                 </label>
                 <input
                   type="text"
@@ -7461,355 +7320,127 @@ function AppContent() {
 
               <div className="form-group">
                 <label>Mobile number</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select
-                    value={selectedCountryCode}
-                    onChange={(e) => setSelectedCountryCode(e.target.value)}
-                    className="country-select"
-                    disabled
-                    style={{
-                      width: '80px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      borderRadius: '12px',
-                      color: 'white',
-                      padding: '12px 8px',
-                      outline: 'none',
-                      opacity: 0.7,
-                      cursor: 'not-allowed'
-                    }}
-                  >
-                    <option value="+93">+93 (Afghanistan)</option>
-                    <option value="+355">+355 (Albania)</option>
-                    <option value="+213">+213 (Algeria)</option>
-                    <option value="+1-684">+1-684 (American Samoa)</option>
-                    <option value="+376">+376 (Andorra)</option>
-                    <option value="+244">+244 (Angola)</option>
-                    <option value="+1-264">+1-264 (Anguilla)</option>
-                    <option value="+672">+672 (Antarctica)</option>
-                    <option value="+1-268">+1-268 (Antigua and Barbuda)</option>
-                    <option value="+54">+54 (Argentina)</option>
-                    <option value="+374">+374 (Armenia)</option>
-                    <option value="+297">+297 (Aruba)</option>
-                    <option value="+61">+61 (Australia)</option>
-                    <option value="+43">+43 (Austria)</option>
-                    <option value="+994">+994 (Azerbaijan)</option>
-                    <option value="+1-242">+1-242 (Bahamas)</option>
-                    <option value="+973">+973 (Bahrain)</option>
-                    <option value="+880">+880 (Bangladesh)</option>
-                    <option value="+1-246">+1-246 (Barbados)</option>
-                    <option value="+375">+375 (Belarus)</option>
-                    <option value="+32">+32 (Belgium)</option>
-                    <option value="+501">+501 (Belize)</option>
-                    <option value="+229">+229 (Benin)</option>
-                    <option value="+1-441">+1-441 (Bermuda)</option>
-                    <option value="+975">+975 (Bhutan)</option>
-                    <option value="+591">+591 (Bolivia)</option>
-                    <option value="+387">+387 (Bosnia and Herzegovina)</option>
-                    <option value="+267">+267 (Botswana)</option>
-                    <option value="+55">+55 (Brazil)</option>
-                    <option value="+246">+246 (British Indian Ocean Territory)</option>
-                    <option value="+1-284">+1-284 (British Virgin Islands)</option>
-                    <option value="+673">+673 (Brunei)</option>
-                    <option value="+359">+359 (Bulgaria)</option>
-                    <option value="+226">+226 (Burkina Faso)</option>
-                    <option value="+257">+257 (Burundi)</option>
-                    <option value="+855">+855 (Cambodia)</option>
-                    <option value="+237">+237 (Cameroon)</option>
-                    <option value="+1">+1 (Canada)</option>
-                    <option value="+238">+238 (Cape Verde)</option>
-                    <option value="+1-345">+1-345 (Cayman Islands)</option>
-                    <option value="+236">+236 (Central African Republic)</option>
-                    <option value="+235">+235 (Chad)</option>
-                    <option value="+56">+56 (Chile)</option>
-                    <option value="+86">+86 (China)</option>
-                    <option value="+57">+57 (Colombia)</option>
-                    <option value="+269">+269 (Comoros)</option>
-                    <option value="+682">+682 (Cook Islands)</option>
-                    <option value="+506">+506 (Costa Rica)</option>
-                    <option value="+385">+385 (Croatia)</option>
-                    <option value="+53">+53 (Cuba)</option>
-                    <option value="+599">+599 (Curacao)</option>
-                    <option value="+357">+357 (Cyprus)</option>
-                    <option value="+420">+420 (Czech Republic)</option>
-                    <option value="+243">+243 (Democratic Republic of the Congo)</option>
-                    <option value="+45">+45 (Denmark)</option>
-                    <option value="+253">+253 (Djibouti)</option>
-                    <option value="+1-767">+1-767 (Dominica)</option>
-                    <option value="+1-809">+1-809 (Dominican Republic)</option>
-                    <option value="+670">+670 (East Timor)</option>
-                    <option value="+593">+593 (Ecuador)</option>
-                    <option value="+20">+20 (Egypt)</option>
-                    <option value="+503">+503 (El Salvador)</option>
-                    <option value="+240">+240 (Equatorial Guinea)</option>
-                    <option value="+291">+291 (Eritrea)</option>
-                    <option value="+372">+372 (Estonia)</option>
-                    <option value="+251">+251 (Ethiopia)</option>
-                    <option value="+500">+500 (Falkland Islands)</option>
-                    <option value="+298">+298 (Faroe Islands)</option>
-                    <option value="+679">+679 (Fiji)</option>
-                    <option value="+358">+358 (Finland)</option>
-                    <option value="+33">+33 (France)</option>
-                    <option value="+689">+689 (French Polynesia)</option>
-                    <option value="+241">+241 (Gabon)</option>
-                    <option value="+220">+220 (Gambia)</option>
-                    <option value="+995">+995 (Georgia)</option>
-                    <option value="+49">+49 (Germany)</option>
-                    <option value="+233">+233 (Ghana)</option>
-                    <option value="+350">+350 (Gibraltar)</option>
-                    <option value="+30">+30 (Greece)</option>
-                    <option value="+299">+299 (Greenland)</option>
-                    <option value="+1-473">+1-473 (Grenada)</option>
-                    <option value="+1-671">+1-671 (Guam)</option>
-                    <option value="+502">+502 (Guatemala)</option>
-                    <option value="+44-1481">+44-1481 (Guernsey)</option>
-                    <option value="+224">+224 (Guinea)</option>
-                    <option value="+245">+245 (Guinea-Bissau)</option>
-                    <option value="+592">+592 (Guyana)</option>
-                    <option value="+509">+509 (Haiti)</option>
-                    <option value="+504">+504 (Honduras)</option>
-                    <option value="+852">+852 (Hong Kong)</option>
-                    <option value="+36">+36 (Hungary)</option>
-                    <option value="+354">+354 (Iceland)</option>
-                    <option value="+91">+91 (India)</option>
-                    <option value="+62">+62 (Indonesia)</option>
-                    <option value="+98">+98 (Iran)</option>
-                    <option value="+964">+964 (Iraq)</option>
-                    <option value="+353">+353 (Ireland)</option>
-                    <option value="+44-1624">+44-1624 (Isle of Man)</option>
-                    <option value="+972">+972 (Israel)</option>
-                    <option value="+39">+39 (Italy)</option>
-                    <option value="+225">+225 (Ivory Coast)</option>
-                    <option value="+1-876">+1-876 (Jamaica)</option>
-                    <option value="+81">+81 (Japan)</option>
-                    <option value="+44-1534">+44-1534 (Jersey)</option>
-                    <option value="+962">+962 (Jordan)</option>
-                    <option value="+7">+7 (Kazakhstan)</option>
-                    <option value="+254">+254 (Kenya)</option>
-                    <option value="+686">+686 (Kiribati)</option>
-                    <option value="+383">+383 (Kosovo) </option>
-                    <option value="+965">+965 (Kuwait)</option>
-                    <option value="+996">+996 (Kyrgyzstan)</option>
-                    <option value="+856">+856 (Laos)</option>
-                    <option value="+371">+371 (Latvia)</option>
-                    <option value="+961">+961 (Lebanon)</option>
-                    <option value="+266">+266 (Lesotho)</option>
-                    <option value="+231">+231 (Liberia)</option>
-                    <option value="+218">+218 (Libya)</option>
-                    <option value="+423">+423 (Liechtenstein)</option>
-                    <option value="+370">+370 (Lithuania)</option>
-                    <option value="+352">+352 (Luxembourg)</option>
-                    <option value="+853">+853 (Macau)</option>
-                    <option value="+389">+389 (North Macedonia)</option>
-                    <option value="+261">+261 (Madagascar)</option>
-                    <option value="+265">+265 (Malawi)</option>
-                    <option value="+60">+60 (Malaysia)</option>
-                    <option value="+960">+960 (Maldives)</option>
-                    <option value="+223">+223 (Mali)</option>
-                    <option value="+356">+356 (Malta)</option>
-                    <option value="+692">+692 (Marshall Islands)</option>
-                    <option value="+222">+222 (Mauritania)</option>
-                    <option value="+230">+230 (Mauritius)</option>
-                    <option value="+262">+262 (Mayotte)</option>
-                    <option value="+52">+52 (Mexico)</option>
-                    <option value="+691">+691 (Micronesia)</option>
-                    <option value="+373">+373 (Moldova)</option>
-                    <option value="+377">+377 (Monaco)</option>
-                    <option value="+976">+976 (Mongolia)</option>
-                    <option value="+382">+382 (Montenegro)</option>
-                    <option value="+1-664">+1-664 (Montserrat)</option>
-                    <option value="+212">+212 (Morocco)</option>
-                    <option value="+258">+258 (Mozambique)</option>
-                    <option value="+95">+95 (Myanmar)</option>
-                    <option value="+264">+264 (Namibia)</option>
-                    <option value="+674">+674 (Nauru)</option>
-                    <option value="+977">+977 (Nepal)</option>
-                    <option value="+31">+31 (Netherlands)</option>
-                    <option value="+599">+599 (Netherlands Antilles)</option>
-                    <option value="+687">+687 (New Caledonia)</option>
-                    <option value="+64">+64 (New Zealand)</option>
-                    <option value="+505">+505 (Nicaragua)</option>
-                    <option value="+227">+227 (Niger)</option>
-                    <option value="+234">+234 (Nigeria)</option>
-                    <option value="+683">+683 (Niue)</option>
-                    <option value="+672">+672 (Norfolk Island)</option>
-                    <option value="+850">+850 (North Korea)</option>
-                    <option value="+1-670">+1-670 (Northern Mariana Islands)</option>
-                    <option value="+47">+47 (Norway)</option>
-                    <option value="+968">+968 (Oman)</option>
-                    <option value="+92">+92 (Pakistan)</option>
-                    <option value="+680">+680 (Palau)</option>
-                    <option value="+970">+970 (Palestine)</option>
-                    <option value="+507">+507 (Panama)</option>
-                    <option value="+675">+675 (Papua New Guinea)</option>
-                    <option value="+595">+595 (Paraguay)</option>
-                    <option value="+51">+51 (Peru)</option>
-                    <option value="+63">+63 (Philippines)</option>
-                    <option value="+64">+64 (Pitcairn)</option>
-                    <option value="+48">+48 (Poland)</option>
-                    <option value="+351">+351 (Portugal)</option>
-                    <option value="+1-787">+1-787 (Puerto Rico)</option>
-                    <option value="+974">+974 (Qatar)</option>
-                    <option value="+242">+242 (Republic of the Congo)</option>
-                    <option value="+262">+262 (Reunion)</option>
-                    <option value="+40">+40 (Romania)</option>
-                    <option value="+7">+7 (Russia)</option>
-                    <option value="+250">+250 (Rwanda)</option>
-                    <option value="+590">+590 (Saint Barthelemy)</option>
-                    <option value="+290">+290 (Saint Helena)</option>
-                    <option value="+1-869">+1-869 (Saint Kitts and Nevis)</option>
-                    <option value="+1-758">+1-758 (Saint Lucia)</option>
-                    <option value="+590">+590 (Saint Martin)</option>
-                    <option value="+508">+508 (Saint Pierre and Miquelon)</option>
-                    <option value="+1-784">+1-784 (Saint Vincent and the Grenadines)</option>
-                    <option value="+685">+685 (Samoa)</option>
-                    <option value="+378">+378 (San Marino)</option>
-                    <option value="+239">+239 (Sao Tome and Principe)</option>
-                    <option value="+966">+966 (Saudi Arabia)</option>
-                    <option value="+221">+221 (Senegal)</option>
-                    <option value="+381">+381 (Serbia)</option>
-                    <option value="+248">+248 (Seychelles)</option>
-                    <option value="+232">+232 (Sierra Leone)</option>
-                    <option value="+65">+65 (Singapore)</option>
-                    <option value="+1-721">+1-721 (Sint Maarten)</option>
-                    <option value="+421">+421 (Slovakia)</option>
-                    <option value="+386">+386 (Slovenia)</option>
-                    <option value="+677">+677 (Solomon Islands)</option>
-                    <option value="+252">+252 (Somalia)</option>
-                    <option value="+27">+27 (South Africa)</option>
-                    <option value="+82">+82 (South Korea)</option>
-                    <option value="+211">+211 (South Sudan)</option>
-                    <option value="+34">+34 (Spain)</option>
-                    <option value="+94">+94 (Sri Lanka)</option>
-                    <option value="+249">+249 (Sudan)</option>
-                    <option value="+597">+597 (Suriname)</option>
-                    <option value="+47">+47 (Svalbard and Jan Mayen)</option>
-                    <option value="+268">+268 (Eswatini)</option>
-                    <option value="+46">+46 (Sweden)</option>
-                    <option value="+41">+41 (Switzerland)</option>
-                    <option value="+963">+963 (Syria)</option>
-                    <option value="+886">+886 (Taiwan)</option>
-                    <option value="+992">+992 (Tajikistan)</option>
-                    <option value="+255">+255 (Tanzania)</option>
-                    <option value="+66">+66 (Thailand)</option>
-                    <option value="+228">+228 (Togo)</option>
-                    <option value="+690">+690 (Tokelau)</option>
-                    <option value="+676">+676 (Tonga)</option>
-                    <option value="+1-868">+1-868 (Trinidad and Tobago)</option>
-                    <option value="+216">+216 (Tunisia)</option>
-                    <option value="+90">+90 (Turkey)</option>
-                    <option value="+993">+993 (Turkmenistan)</option>
-                    <option value="+1-649">+1-649 (Turks and Caicos Islands)</option>
-                    <option value="+688">+688 (Tuvalu)</option>
-                    <option value="+1-340">+1-340 (U.S. Virgin Islands)</option>
-                    <option value="+256">+256 (Uganda)</option>
-                    <option value="+380">+380 (Ukraine)</option>
-                    <option value="+971">+971 (UAE)</option>
-                    <option value="+44">+44 (UK)</option>
-                    <option value="+1">+1 (USA)</option>
-                    <option value="+598">+598 (Uruguay)</option>
-                    <option value="+998">+998 (Uzbekistan)</option>
-                    <option value="+678">+678 (Vanuatu)</option>
-                    <option value="+379">+379 (Vatican)</option>
-                    <option value="+58">+58 (Venezuela)</option>
-                    <option value="+84">+84 (Vietnam)</option>
-                    <option value="+681">+681 (Wallis and Futuna)</option>
-                    <option value="+212">+212 (Western Sahara)</option>
-                    <option value="+967">+967 (Yemen)</option>
-                    <option value="+260">+260 (Zambia)</option>
-                    <option value="+263">+263 (Zimbabwe)</option>
-                  </select>
-                  <input
-                    type="tel"
-                    name="mobile"
-                    value={formData.mobile}
-                    onChange={handleChange}
-                    placeholder="Enter mobile number"
-                    style={{ flex: 1, background: 'rgba(255, 255, 255, 0.05)', opacity: 0.7, cursor: 'not-allowed' }}
-                    readOnly
-                    required
-                  />
-                </div>
+                <input
+                  type="text"
+                  name="mobile"
+                  value={`${selectedCountryCode} ${formData.mobile || tempMobile || ''}`}
+                  readOnly
+                  required
+                  style={{ width: '100%', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', padding: '12px', color: 'rgba(255,255,255,0.9)', fontSize: '16px', opacity: 0.75, cursor: 'not-allowed' }}
+                />
               </div>
 
-              {/* Hierarchical Location Dropdowns */}
+              {/* Hierarchical Location Search Dropdowns (State -> District -> Constituency) */}
               <div className="form-group">
                 <label>State</label>
-                <select
-                  name="state"
-                  value={formData.state}
-                  onChange={(e) => {
-                    const state = e.target.value;
-                    setFormData({ ...formData, state, district: '', constituency: '', mandal: '' });
-                    setAvailableDistricts([]);
-                    setAvailableConstituencies([]);
-                    setAvailableMandals([]);
-                    if (state) fetchDistricts(state);
-                  }}
-                  required
-                  style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white' }}
-                >
-                  <option value="" style={{ color: 'black' }}>Select State</option>
-                  {availableStates.map(s => <option key={s} value={s} style={{ color: 'black' }}>{s}</option>)}
-                </select>
+                <div className="suggestions-container" style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="Search or select state"
+                    value={formData.state}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, state: v, district: '', constituency: '', mandal: '' });
+                      fetchLocationSuggestions(v, 'state_form');
+                    }}
+                    onFocus={() => { fetchLocationSuggestions('', 'state_form'); }}
+                    required
+                    style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white' }}
+                  />
+                  {locationSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a2332', zIndex: 1000, border: '1px solid rgba(255,255,255,0.08)', marginTop: '6px', borderRadius: '12px', overflow: 'hidden' }}>
+                      {locationSuggestions.filter(x => x.type === 'state').map((s, i) => (
+                        <div key={i} onClick={() => {
+                          setFormData({ ...formData, state: s.name, district: '', constituency: '', mandal: '' });
+                          setLocationSuggestions([]);
+                          if (masterData.locations && masterData.locations[s.name]) {
+                            setAvailableDistricts(Object.keys(masterData.locations[s.name]).sort());
+                          } else setAvailableDistricts([]);
+                        }} style={{ padding: '10px 12px', cursor: 'pointer', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>{s.name}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-group">
                 <label>District name</label>
-                <select
-                  name="district"
-                  value={formData.district}
-                  onChange={(e) => {
-                    const district = e.target.value;
-                    setFormData({ ...formData, district, constituency: '', mandal: '' });
-                    setAvailableConstituencies([]);
-                    setAvailableMandals([]);
-                    if (district) fetchConstituencies(district);
-                  }}
-                  required
-                  disabled={!formData.state}
-                  style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.state ? 1 : 0.5 }}
-                >
-                  <option value="" style={{ color: 'black' }}>Select District</option>
-                  {availableDistricts.map(d => <option key={d} value={d} style={{ color: 'black' }}>{d}</option>)}
-                </select>
+                <div className="suggestions-container" style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="Search or select district"
+                    value={formData.district}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, district: v, constituency: '', mandal: '' });
+                      fetchLocationSuggestions(v, 'district_form');
+                    }}
+                    onFocus={() => { fetchLocationSuggestions('', 'district_form'); }}
+                    required
+                    disabled={!formData.state}
+                    style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.state ? 1 : 0.5 }}
+                  />
+                  {locationSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a2332', zIndex: 1000, border: '1px solid rgba(255,255,255,0.08)', marginTop: '6px', borderRadius: '12px', overflow: 'hidden' }}>
+                      {locationSuggestions.filter(x => x.type === 'district').map((s, i) => (
+                        <div key={i} onClick={() => {
+                          setFormData({ ...formData, district: s.name, constituency: '', mandal: '' });
+                          setLocationSuggestions([]);
+                          if (masterData.locations && masterData.locations[s.state] && masterData.locations[s.state][s.name]) {
+                            setAvailableConstituencies(Object.keys(masterData.locations[s.state][s.name]).sort());
+                          } else setAvailableConstituencies([]);
+                        }} style={{ padding: '10px 12px', cursor: 'pointer', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>{s.name}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-group">
-                <label>Constituency</label>
-                <select
-                  name="constituency"
-                  value={formData.constituency}
-                  onChange={(e) => {
-                    const constituency = e.target.value;
-                    setFormData({ ...formData, constituency, mandal: '' });
-                    setAvailableMandals([]);
-                    if (constituency) fetchMandals(constituency);
-                  }}
-                  required
-                  disabled={!formData.district}
-                  style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.district ? 1 : 0.5 }}
-                >
-                  <option value="" style={{ color: 'black' }}>Select Constituency</option>
-                  {availableConstituencies.map(c => <option key={c} value={c} style={{ color: 'black' }}>{c}</option>)}
-                </select>
+                <label>City</label>
+                <div className="suggestions-container" style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="Search or select city"
+                    value={formData.constituency}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, constituency: v, mandal: '' });
+                      fetchLocationSuggestions(v, 'constituency_form');
+                    }}
+                    onFocus={() => { fetchLocationSuggestions('', 'constituency_form'); }}
+                    required
+                    disabled={!formData.district}
+                    style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.district ? 1 : 0.5 }}
+                  />
+                  {locationSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a2332', zIndex: 1000, border: '1px solid rgba(255,255,255,0.08)', marginTop: '6px', borderRadius: '12px', overflow: 'hidden' }}>
+                      {locationSuggestions.filter(x => x.type === 'constituency').map((s, i) => (
+                        <div key={i} onClick={() => {
+                          setFormData({ ...formData, constituency: s.name, mandal: '' });
+                          setLocationSuggestions([]);
+                          if (masterData.locations && masterData.locations[s.state] && masterData.locations[s.state][s.district] && masterData.locations[s.state][s.district][s.name]) {
+                            setAvailableMandals([...masterData.locations[s.state][s.district][s.name]].sort());
+                          } else setAvailableMandals([]);
+                        }} style={{ padding: '10px 12px', cursor: 'pointer', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>{s.name}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-group">
                 <label>Mandal name</label>
-                <select
+                <input
+                  type="text"
                   name="mandal"
                   value={formData.mandal}
-                  onChange={(e) => {
-                    setFormData({ ...formData, mandal: e.target.value });
-                  }}
+                  onChange={(e) => setFormData({ ...formData, mandal: e.target.value })}
+                  placeholder="Enter mandal name"
                   required
                   disabled={!formData.constituency}
                   style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.constituency ? 1 : 0.5 }}
-                >
-                  <option value="" style={{ color: 'black' }}>Select Mandal</option>
-                  {availableMandals.map(m => <option key={m} value={m} style={{ color: 'black' }}>{m}</option>)}
-                </select>
+                />
               </div>
 
               <div className="form-group">
@@ -7825,7 +7456,7 @@ function AppContent() {
                 />
               </div>
 
-              <button type="submit" className="submit-btn">Submit</button>
+              <button type="submit" className="submit-btn" style={{ marginTop: '8px' }}>Submit</button>
             </form>
 
             <div className="bottom-bar"></div>

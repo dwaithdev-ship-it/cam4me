@@ -1,7 +1,11 @@
 import pg from 'pg';
 import fs from 'fs';
+import dotenv from 'dotenv';
 
-const pool = new pg.Pool({ connectionString: 'postgresql://admin:admin123@localhost:5433/chatcam' });
+dotenv.config();
+
+const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+const pool = new pg.Pool({ connectionString });
 
 try {
     const schema = fs.readFileSync('chatcam_schema.sql', 'utf8');

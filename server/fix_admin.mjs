@@ -1,7 +1,12 @@
 import pg from 'pg';
 import bcrypt from 'bcrypt';
 
-const pool = new pg.Pool({ connectionString: 'postgresql://admin:admin123@localhost:5433/chatcam' });
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+const pool = new pg.Pool({ connectionString });
 
 const email = 'dwaith.dev@gmail.com';
 const password = 'Dw@1thdev123';
