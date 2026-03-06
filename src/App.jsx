@@ -393,6 +393,15 @@ function AppContent() {
   const [expandedItems, setExpandedItems] = useState({}); // { itemKey: boolean }
   const [citySearch, setCitySearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
+  // Inputs that track typed text separately from the selected values
+  const [stateInput, setStateInput] = useState('');
+  const [districtInput, setDistrictInput] = useState('');
+  const [constituencyInput, setConstituencyInput] = useState('');
+  // Flags to ensure the user selected from suggestions (not free-typed)
+  const [stateSelected, setStateSelected] = useState(false);
+  const [districtSelected, setDistrictSelected] = useState(false);
+  const [constituencySelected, setConstituencySelected] = useState(false);
+  const suggestionTimerRef = useRef(null);
 
   // Derived Admin Master Data for legacy UI support if needed
   const adminMasterData = {
@@ -627,6 +636,7 @@ function AppContent() {
 
   const fetchLocationSuggestions = async (query, type) => {
     setIsFetchingLocation(true);
+    console.debug('fetchLocationSuggestions called', { query, type });
     try {
       const q = query ? query.toLowerCase() : '';
       let suggestions = [];
@@ -635,6 +645,8 @@ function AppContent() {
       let searchLocations = (masterData && masterData.locations && Object.keys(masterData.locations).length > 0)
         ? masterData.locations
         : (localLocationData || DEFAULT_AP_TS || {});
+      const sourceType = (masterData && masterData.locations && Object.keys(masterData.locations).length > 0) ? 'master' : (localLocationData ? 'local' : 'default');
+      console.debug('searchLocations source:', sourceType);
 
       // If query is empty, return top-level lists depending on type
       if (!q || q.length < 1) {
@@ -675,41 +687,90 @@ function AppContent() {
         return;
       }
 
-      // Hierarchy: State -> District -> Constituency -> Mandal -> Village
-      Object.entries(searchLocations || {}).forEach(([stateName, districts]) => {
-        // State Match
-        if (stateName.toLowerCase().includes(q)) {
-          suggestions.push({ display: `${stateName} (State)`, name: stateName, type: 'state' });
-        }
-
-        Object.entries(districts || {}).forEach(([districtName, constituencies]) => {
-          // District Match
-          if (districtName.toLowerCase().includes(q)) {
-            suggestions.push({ display: `${districtName}, ${stateName} (District)`, name: districtName, state: stateName, type: 'district' });
+      // Restrict search depending on the field type to ensure suggestions are within selected parents.
+      // State search: search top-level keys
+      if (type === 'state_form') {
+        Object.keys(searchLocations || {}).forEach((stateName) => {
+          if (stateName && stateName.toLowerCase().includes(q)) {
+            suggestions.push({ display: `${stateName} (State)`, name: stateName, type: 'state' });
           }
+        });
+      }
 
-          Object.entries(constituencies || {}).forEach(([constiName, mandals]) => {
-            // Constituency Match
-            if (constiName.toLowerCase().includes(q)) {
-              suggestions.push({ display: `${constiName}, ${districtName}, ${stateName} (Constituency)`, name: constiName, state: stateName, district: districtName, type: 'constituency' });
+      // District search: only within selected state (UI disables district input if state not selected)
+      else if (type === 'district_form') {
+        const s = formData.state;
+        if (s && searchLocations && searchLocations[s]) {
+          Object.keys(searchLocations[s]).forEach((districtName) => {
+            if (districtName && districtName.toLowerCase().includes(q)) {
+              suggestions.push({ display: `${districtName}, ${s} (District)`, name: districtName, state: s, type: 'district' });
             }
+          });
+        }
+      }
 
-            Object.entries(mandals || {}).forEach(([mandalName, villages]) => {
-              // Mandal Match
-              if (mandalName.toLowerCase().includes(q)) {
-                suggestions.push({ display: `${mandalName}, ${constiName}, ${districtName} (Mandal)`, name: mandalName, state: stateName, district: districtName, constituency: constiName, type: 'mandal' });
-              }
-
-              (villages || []).forEach(villageName => {
-                // Village Match
-                if (villageName.toLowerCase().includes(q)) {
-                  suggestions.push({ display: `${villageName}, ${mandalName}, ${constiName}`, name: villageName, state: stateName, district: districtName, constituency: constiName, mandal: mandalName, type: 'village' });
+      // Constituency/City search: only within selected state and district (UI disables city input if district not selected)
+      else if (type === 'constituency_form') {
+        const s = formData.state;
+        const d = formData.district;
+        if (s && d && searchLocations && searchLocations[s] && searchLocations[s][d]) {
+          Object.keys(searchLocations[s][d]).forEach((constiName) => {
+            if (constiName && constiName.toLowerCase().includes(q)) {
+              suggestions.push({ display: `${constiName}, ${d}, ${s} (Constituency)`, name: constiName, state: s, district: d, type: 'constituency' });
+            }
+            // Also search mandals and villages under this constituency for broader matches
+            const mandals = searchLocations[s][d][constiName];
+            if (mandals) {
+              Object.keys(mandals || {}).forEach((mandalName) => {
+                if (mandalName && mandalName.toLowerCase().includes(q)) {
+                  suggestions.push({ display: `${mandalName}, ${constiName}, ${d} (Mandal)`, name: mandalName, state: s, district: d, constituency: constiName, type: 'mandal' });
                 }
+                let villageList = [];
+                const villages = mandals[mandalName];
+                if (Array.isArray(villages)) villageList = villages;
+                else if (villages && typeof villages === 'object') villageList = Object.keys(villages);
+                villageList.forEach(villageName => {
+                  if (villageName && String(villageName).toLowerCase().includes(q)) {
+                    suggestions.push({ display: `${villageName}, ${mandalName}, ${constiName}`, name: villageName, state: s, district: d, constituency: constiName, mandal: mandalName, type: 'village' });
+                  }
+                });
+              });
+            }
+          });
+        }
+      }
+
+      // Fallback: global search across entire dataset (used for unexpected cases)
+      else {
+        Object.entries(searchLocations || {}).forEach(([stateName, districts]) => {
+          if (stateName && stateName.toLowerCase().includes(q)) {
+            suggestions.push({ display: `${stateName} (State)`, name: stateName, type: 'state' });
+          }
+          Object.entries(districts || {}).forEach(([districtName, constituencies]) => {
+            if (districtName && districtName.toLowerCase().includes(q)) {
+              suggestions.push({ display: `${districtName}, ${stateName} (District)`, name: districtName, state: stateName, type: 'district' });
+            }
+            Object.entries(constituencies || {}).forEach(([constiName, mandals]) => {
+              if (constiName && constiName.toLowerCase().includes(q)) {
+                suggestions.push({ display: `${constiName}, ${districtName}, ${stateName} (Constituency)`, name: constiName, state: stateName, district: districtName, type: 'constituency' });
+              }
+              Object.entries(mandals || {}).forEach(([mandalName, villages]) => {
+                if (mandalName && mandalName.toLowerCase().includes(q)) {
+                  suggestions.push({ display: `${mandalName}, ${constiName}, ${districtName} (Mandal)`, name: mandalName, state: stateName, district: districtName, constituency: constiName, type: 'mandal' });
+                }
+                let villageList = [];
+                if (Array.isArray(villages)) villageList = villages;
+                else if (villages && typeof villages === 'object') villageList = Object.keys(villages);
+                villageList.forEach(villageName => {
+                  if (villageName && String(villageName).toLowerCase().includes(q)) {
+                    suggestions.push({ display: `${villageName}, ${mandalName}, ${constiName}`, name: villageName, state: stateName, district: districtName, constituency: constiName, mandal: mandalName, type: 'village' });
+                  }
+                });
               });
             });
           });
         });
-      });
+      }
 
       // Filtering based on form field
       if (type === 'state_form') suggestions = suggestions.filter(s => s.type === 'state');
@@ -728,6 +789,7 @@ function AppContent() {
         if (stateMatches.length > 0) suggestions = stateMatches;
       }
 
+      console.debug('fetchLocationSuggestions produced', { count: suggestions.length, sample: suggestions.slice(0, 8) });
       setLocationSuggestions(suggestions);
     } catch (err) {
       console.error('Error searching master data:', err);
@@ -1052,6 +1114,16 @@ function AppContent() {
       }));
     }
   }, [currentScreen, profileData]);
+
+  // Keep the typed inputs in sync with selected formData values (useful when editing)
+  useEffect(() => {
+    setStateInput(formData.state || '');
+    setDistrictInput(formData.district || '');
+    setConstituencyInput(formData.constituency || '');
+    setStateSelected(!!formData.state);
+    setDistrictSelected(!!formData.district);
+    setConstituencySelected(!!formData.constituency);
+  }, [formData.state, formData.district, formData.constituency]);
 
   // Debug: Log all screen transitions
   useEffect(() => {
@@ -1931,6 +2003,11 @@ function AppContent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Ensure location fields were selected from suggestions (not free-typed)
+    if (!(stateSelected && districtSelected && constituencySelected)) {
+      return alert('Please select State, District and City from the suggestions before submitting.');
+    }
 
     if (isNewSignupFlow && !currentUser) {
       setCurrentScreen('signup_options');
@@ -7337,13 +7414,25 @@ function AppContent() {
                   <input
                     type="text"
                     placeholder="Search or select state"
-                    value={formData.state}
+                    value={stateInput || formData.state}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setFormData({ ...formData, state: v, district: '', constituency: '', mandal: '' });
-                      fetchLocationSuggestions(v, 'state_form');
+                      console.debug('state input change:', v);
+                      setStateInput(v);
+                      // typed input invalidates previous selection
+                      setStateSelected(false);
+                      setFormData({ ...formData, state: '', district: '', constituency: '', mandal: '' });
+                      setDistrictInput('');
+                      setConstituencyInput('');
+                      setDistrictSelected(false);
+                      setConstituencySelected(false);
+                      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+                      suggestionTimerRef.current = setTimeout(() => {
+                        if (v && v.length >= 1) fetchLocationSuggestions(v, 'state_form');
+                        else setLocationSuggestions([]);
+                      }, 180);
                     }}
-                    onFocus={() => { fetchLocationSuggestions('', 'state_form'); }}
+                    onFocus={() => { /* no-op: don't show suggestions until user types */ }}
                     required
                     style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white' }}
                   />
@@ -7351,7 +7440,13 @@ function AppContent() {
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a2332', zIndex: 1000, border: '1px solid rgba(255,255,255,0.08)', marginTop: '6px', borderRadius: '12px', overflow: 'hidden' }}>
                       {locationSuggestions.filter(x => x.type === 'state').map((s, i) => (
                         <div key={i} onClick={() => {
+                          setStateInput(s.name);
                           setFormData({ ...formData, state: s.name, district: '', constituency: '', mandal: '' });
+                          setStateSelected(true);
+                          setDistrictInput('');
+                          setConstituencyInput('');
+                          setDistrictSelected(false);
+                          setConstituencySelected(false);
                           setLocationSuggestions([]);
                           if (masterData.locations && masterData.locations[s.name]) {
                             setAvailableDistricts(Object.keys(masterData.locations[s.name]).sort());
@@ -7369,13 +7464,22 @@ function AppContent() {
                   <input
                     type="text"
                     placeholder="Search or select district"
-                    value={formData.district}
+                    value={districtInput || formData.district}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setFormData({ ...formData, district: v, constituency: '', mandal: '' });
-                      fetchLocationSuggestions(v, 'district_form');
+                      console.debug('district input change:', v);
+                      setDistrictInput(v);
+                      setDistrictSelected(false);
+                      setFormData({ ...formData, district: '', constituency: '', mandal: '' });
+                      setConstituencyInput('');
+                      setConstituencySelected(false);
+                      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+                      suggestionTimerRef.current = setTimeout(() => {
+                        if (v && v.length >= 1) fetchLocationSuggestions(v, 'district_form');
+                        else setLocationSuggestions([]);
+                      }, 180);
                     }}
-                    onFocus={() => { fetchLocationSuggestions('', 'district_form'); }}
+                    onFocus={() => { /* no-op: don't show suggestions until user types */ }}
                     required
                     disabled={!formData.state}
                     style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.state ? 1 : 0.5 }}
@@ -7384,7 +7488,11 @@ function AppContent() {
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a2332', zIndex: 1000, border: '1px solid rgba(255,255,255,0.08)', marginTop: '6px', borderRadius: '12px', overflow: 'hidden' }}>
                       {locationSuggestions.filter(x => x.type === 'district').map((s, i) => (
                         <div key={i} onClick={() => {
+                          setDistrictInput(s.name);
                           setFormData({ ...formData, district: s.name, constituency: '', mandal: '' });
+                          setDistrictSelected(true);
+                          setConstituencyInput('');
+                          setConstituencySelected(false);
                           setLocationSuggestions([]);
                           if (masterData.locations && masterData.locations[s.state] && masterData.locations[s.state][s.name]) {
                             setAvailableConstituencies(Object.keys(masterData.locations[s.state][s.name]).sort());
@@ -7402,13 +7510,20 @@ function AppContent() {
                   <input
                     type="text"
                     placeholder="Search or select city"
-                    value={formData.constituency}
+                    value={constituencyInput || formData.constituency}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setFormData({ ...formData, constituency: v, mandal: '' });
-                      fetchLocationSuggestions(v, 'constituency_form');
+                      console.debug('city input change:', v);
+                      setConstituencyInput(v);
+                      setConstituencySelected(false);
+                      setFormData({ ...formData, constituency: '', mandal: '' });
+                      if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
+                      suggestionTimerRef.current = setTimeout(() => {
+                        if (v && v.length >= 1) fetchLocationSuggestions(v, 'constituency_form');
+                        else setLocationSuggestions([]);
+                      }, 180);
                     }}
-                    onFocus={() => { fetchLocationSuggestions('', 'constituency_form'); }}
+                    onFocus={() => { /* no-op: don't show suggestions until user types */ }}
                     required
                     disabled={!formData.district}
                     style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.district ? 1 : 0.5 }}
@@ -7417,7 +7532,9 @@ function AppContent() {
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a2332', zIndex: 1000, border: '1px solid rgba(255,255,255,0.08)', marginTop: '6px', borderRadius: '12px', overflow: 'hidden' }}>
                       {locationSuggestions.filter(x => x.type === 'constituency').map((s, i) => (
                         <div key={i} onClick={() => {
+                          setConstituencyInput(s.name);
                           setFormData({ ...formData, constituency: s.name, mandal: '' });
+                          setConstituencySelected(true);
                           setLocationSuggestions([]);
                           if (masterData.locations && masterData.locations[s.state] && masterData.locations[s.state][s.district] && masterData.locations[s.state][s.district][s.name]) {
                             setAvailableMandals([...masterData.locations[s.state][s.district][s.name]].sort());
@@ -7456,7 +7573,7 @@ function AppContent() {
                 />
               </div>
 
-              <button type="submit" className="submit-btn" style={{ marginTop: '8px' }}>Submit</button>
+              <button type="submit" className="submit-btn" style={{ marginTop: '8px' }} disabled={!(stateSelected && districtSelected && constituencySelected && formData.name && (tempMobile || formData.mobile) && formData.mandal && formData.village)}>Submit</button>
             </form>
 
             <div className="bottom-bar"></div>
