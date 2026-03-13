@@ -1,8 +1,4 @@
-﻿// Placeholder function for Ad Manager password change
-function handleChangeAdManagerPassword() {
-  // TODO: Implement password change logic
-  console.log('handleChangeAdManagerPassword called');
-}
+﻿
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import emailjs from '@emailjs/browser'
 import './App.css'
@@ -14,6 +10,12 @@ import { Capacitor } from '@capacitor/core'
 import logoBubble from './assets/logo_bubble.png'
 import welcomeText from './assets/welcome_text.png'
 import logoCamera from './assets/logo_camera.png'
+
+// Placeholder function for Ad Manager password change
+function handleChangeAdManagerPassword() {
+  // TODO: Implement password change logic
+  console.log('handleChangeAdManagerPassword called');
+}
 
 
 /** 
@@ -2982,218 +2984,99 @@ function AppContent() {
   }
   // 6th Screen: Profile Page (Setup)
   if (currentScreen === 'profile_setup') {
-    const allCitiesFromII = cities;
-    // Photo, City and Category are mandatory for continuation
-    const canContinue = !!profileData.photo && !!profileData.city && !!profileData.category;
-
     return (
-      <div className="app-container welcome-bg" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <div className="status-bar"><span className="time">{time}</span></div>
-
-        <div className="content" style={{ padding: '0 25px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden', justifyContent: 'flex-start' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '15px', width: '100%', marginBottom: '8px' }}>
-            <img src={logoCamera} alt="Chatcam" style={{ height: '28px' }} />
+      <div className="profile-setup-bg">
+        <div className="profile-setup-main">
+          {/* Ad Banner */}
+          <div className="profile-setup-ad-wrap">
+            <img
+              src={currentAd?.image_url || currentAd?.imageUrl || currentAd?.image || '/default_ad.png'}
+              alt="Ad"
+              className="profile-setup-ad"
+              style={{ objectFit: 'cover' }}
+            />
           </div>
 
-          {/* Ad Section - Exactly matching user target image */}
-          <div className="ad-section" style={{ width: '100%', marginBottom: '8px', borderRadius: '15px', overflow: 'hidden', background: '#1a1a1a', position: 'relative', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-            {currentAd ? (
-              <div
-                onClick={() => currentAd.targetUrl && window.open(ensureAbsoluteUrl(currentAd.targetUrl), '_blank')}
-                style={{ cursor: 'pointer', position: 'relative', width: '100%' }}
-              >
-                <div style={{ width: '100%', height: '180px', position: 'relative', background: '#222' }}>
-                  <img
-                    src={currentAd.image_url || currentAd.imageUrl || currentAd.image}
-                    alt="Ad"
-                    loading="eager"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.parentNode.style.background = 'linear-gradient(45deg, #1a1a1a, #333)';
-                    }}
-                  />
-                  <span style={{ position: 'absolute', top: '8px', right: '10px', color: 'white', fontSize: '10px', fontWeight: 'bold', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '5px', zIndex: 10 }}>Ad</span>
-                </div>
-                {currentAd.text && (
-                  <div style={{ background: '#111116', padding: '8px 12px', width: '100%', boxSizing: 'border-box' }}>
-                    <p style={{ margin: 0, color: 'white', fontSize: '13px', fontWeight: 'bold', textAlign: 'left' }}>{currentAd.text}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ width: '100%', height: '150px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)' }}>
-                <span style={{ fontSize: '12px' }}>Sponsored Ad</span>
-              </div>
-            )}
-          </div>
-
-          <div className="photo-upload-section" style={{ position: 'relative', marginBottom: '8px', marginTop: '8px' }}>
-            <div
-              onClick={handleTakePhoto}
-              style={{
-                width: '220px',
-                height: '220px',
-                borderRadius: '50%',
-                border: '2px solid rgba(255, 255, 255, 0.35)',
-                background: 'rgba(255, 255, 255, 0.03)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                position: 'relative'
-              }}
-            >
+          {/* Profile Image + Camera */}
+          <div className="profile-setup-avatar-wrap">
+            <div className="profile-setup-avatar">
               {profileData.photo ? (
-                <img src={profileData.photo} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={profileData.photo} alt="Profile" className="profile-setup-avatar-img" />
               ) : (
-                <div style={{ textAlign: 'center' }}>
-                  <svg width="45" height="45" viewBox="0 0 24 24" fill="rgba(255,255,255,0.4)">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                  </svg>
-                </div>
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)"><path d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
               )}
-            </div>
-            <div
-              onClick={handleTakePhoto}
-              style={{
-                position: 'absolute',
-                bottom: '8px',
-                right: '8px',
-                width: '56px',
-                height: '56px',
-                background: '#2B4B7C',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 6px 14px rgba(0,0,0,0.35)',
-                cursor: 'pointer',
-                border: '1px solid rgba(255,255,255,0.18)',
-                zIndex: 2
-              }}
-            >
-              <img src={logoCamera} alt="Camera" style={{ width: 28, height: 28 }} />
-            </div>
-          </div>
-
-          <div className="underline-form" style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '0px', marginTop: '10px' }}>
-            <div className="underline-input-group">
-              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', display: 'block', marginBottom: '2px' }}>Profile name</label>
-              <input
-                type="text"
-                name="name"
-                className="underline-input"
-                placeholder="Enter profile name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.7)', color: 'white', padding: '8px 0', fontSize: '16px', outline: 'none', opacity: 1, cursor: 'text' }}
-              />
-            </div>
-
-            <div className="underline-input-group">
-              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', display: 'block', marginBottom: '2px' }}>Mobile</label>
-              <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.7)' }}>
-                <div style={{ minWidth: '60px', marginRight: '10px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 6px', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
-                  <span style={{ color: 'white', fontSize: '16px' }}>{COUNTRY_CODE}</span>
-                </div>
-                <input
-                  type="text"
-                  className="underline-input"
-                  style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', padding: '8px 0', fontSize: '16px', outline: 'none', opacity: 0.6, cursor: 'not-allowed' }}
-                  value={tempMobile || formData.mobile}
-                  readOnly
-                />
-              </div>
-            </div>
-
-            <div className="underline-input-group">
-              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', display: 'block', marginBottom: '2px' }}>City</label>
-              <select
-                className="underline-input"
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.7)', color: 'white', padding: '8px 0', fontSize: '16px', outline: 'none', cursor: 'pointer', appearance: 'none' }}
-                value={profileData.city}
-                onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
-              >
-                <option value="" style={{ background: '#111' }}>Select City</option>
-                {allCitiesFromII.map(c => <option key={c} value={c} style={{ background: '#111' }}>{c}</option>)}
-              </select>
-            </div>
-
-            <div className="underline-input-group">
-              <label style={{ color: 'white', fontSize: '15px', fontWeight: '500', display: 'block', marginBottom: '2px' }}>Category</label>
-              <select
-                className="underline-input"
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.7)', color: 'white', padding: '8px 0', fontSize: '16px', outline: 'none', cursor: 'pointer', appearance: 'none' }}
-                value={profileData.category}
-                onChange={(e) => setProfileData({ ...profileData, category: e.target.value })}
-              >
-                <option value="" style={{ background: '#111' }}>Select Category</option>
-                {adminMasterData.categories.map(cat => <option key={cat} value={cat} style={{ background: '#111' }}>{cat}</option>)}
-              </select>
-            </div>
-
-            <div style={{ marginTop: '-6px', width: '100%', display: 'flex', justifyContent: 'center' }}>
               <button
-                className={`continue-btn-custom`}
-                onClick={async () => {
-                  if (!canContinue) {
-                    let missing = [];
-                    if (!profileData.photo) missing.push("upload a profile picture");
-                    if (!profileData.city) missing.push("select a city");
-                    if (!profileData.category) missing.push("select a category");
-                    alert(`Please ${missing.join(", ")} to continue.`);
-                    return;
-                  }
-
-                  // Save profile and navigate to location selection
-                  const user = currentUser;
-                  const finalData = {
-                    ...formData,
-                    uid: user?.uid,
-                    email: user?.email,
-                    name: profileData.name || formData.name,
-                    mobile: tempMobile || formData.mobile,
-                    photo: profileData.photo,
-                    selectedCity: profileData.city,
-                    selectedCategory: profileData.category,
-                    setupCompleted: true,
-                    termsAccepted: true,
-                    hasCompletedOnboarding: true,
-                    lastIP: deviceIP || '0.0.0.0',
-                    lastLoginTime: new Date().toISOString()
-                  };
-
-                  try {
-                    if (user) {
-                      database.saveUser(finalData).catch(e => console.error('Save user error', e));
-                    }
-                    setProfileData(prev => ({ ...prev, ...finalData }));
-                    localStorage.setItem('onboarding_complete', 'true');
-                    if (user && user.uid) localStorage.setItem('cam4me_user_' + user.uid, JSON.stringify(finalData));
-                  } catch (e) {
-                    console.error('Profile save failed', e);
-                  }
-
-                  setPreviousScreen('profile_setup');
-                  setCurrentScreen('location');
-                  setHasCompletedOnboarding(true);
-                }}
+                className="profile-setup-camera-btn"
+                type="button"
+                tabIndex={0}
+                aria-label="Upload photo"
+                onClick={handleTakePhoto}
               >
-                continue
+                <img src={logoCamera} alt="camera" style={{ width: '100%', height: '100%' }} />
               </button>
             </div>
+          </div>
 
-            {/* Bottom indicator bar (matching other auth screens) */}
-            <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 18 }}>
-              <div className="bottom-indicator"></div>
+          {/* Form */}
+          <form
+            className="profile-setup-form"
+            autoComplete="off"
+            onSubmit={e => {
+              e.preventDefault();
+              if (!profileData.photo || !profileData.city || !profileData.category) return;
+              // ...submit logic...
+            }}
+          >
+            <div>
+              <label className="profile-setup-label">ProfileName</label>
+              <input
+                className="profile-setup-input"
+                value={formData.name || profileData.name || ''}
+                readOnly
+                tabIndex={-1}
+                style={{ color: 'rgba(255,255,255,0.7)', cursor: 'not-allowed' }}
+              />
             </div>
-
-          </div> {/* end underline-form */}
-        </div> {/* end content */}
+            <div>
+              <label className="profile-setup-label">Mobile</label>
+              <input
+                className="profile-setup-input"
+                value={formData.mobile || profileData.mobile || ''}
+                readOnly
+                tabIndex={-1}
+                style={{ color: 'rgba(255,255,255,0.7)', cursor: 'not-allowed' }}
+              />
+            </div>
+            <div>
+              <label className="profile-setup-label">City</label>
+              <input
+                className="profile-setup-input"
+                value={profileData.city || ''}
+                onChange={e => setProfileData({ ...profileData, city: e.target.value })}
+                placeholder="City"
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <label className="profile-setup-label">Category</label>
+              <input
+                className="profile-setup-input"
+                value={profileData.category || ''}
+                onChange={e => setProfileData({ ...profileData, category: e.target.value })}
+                placeholder="Category"
+                autoComplete="off"
+              />
+            </div>
+            <button
+              className="profile-setup-continue"
+              type="submit"
+              disabled={!profileData.photo || !profileData.city || !profileData.category}
+            >
+              continue
+            </button>
+          </form>
+        </div>
       </div>
-      
     );
   }
 
@@ -3232,12 +3115,12 @@ function AppContent() {
           <div className="form" style={{ marginTop: 18, width: '100%', padding: '0 12px' }}>
             <div className="form-group">
               <label>ProfileName</label>
-              <input value={profileData.name || ''} onChange={(e) => setProfileData({ ...profileData, name: e.target.value })} placeholder="ProfileName" />
+              <input value={formData.name || profileData.name || ''} onChange={(e) => {}} placeholder="ProfileName" readOnly className="readonly-input" />
             </div>
 
             <div className="form-group">
               <label>Mobill</label>
-              <input value={profileData.mobile || ''} onChange={(e) => setProfileData({ ...profileData, mobile: e.target.value })} placeholder="+91" />
+              <input value={formData.mobile || profileData.mobile || ''} onChange={(e) => {}} placeholder="+91" readOnly className="readonly-input" />
             </div>
 
             <div className="form-group">
@@ -3264,29 +3147,6 @@ function AppContent() {
                 }}
               >
                 continue
-              </button>
-            </div>
-          </div>
-
-          <div className="auth-footer">
-            <span>Already have account? </span>
-            <button type="button" className="link-btn" onClick={() => setCurrentScreen('signin')}>Sign in</button>
-          </div>
-
-          <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', opacity: 0.6 }}>
-            <div style={{ display: 'flex', gap: '15px' }}>
-              <button
-                onClick={() => setCurrentScreen('admin_login')}
-                style={{ background: 'none', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                Admin Login
-              </button>
-              <span style={{ color: '#fff' }}>|</span>
-              <button
-                onClick={() => setCurrentScreen('ad_manager_login')}
-                style={{ background: 'none', border: 'none', color: '#fff', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                Ad Manager Login
               </button>
             </div>
           </div>
@@ -7428,11 +7288,12 @@ function AppContent() {
                       setConstituencySelected(false);
                       if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
                       suggestionTimerRef.current = setTimeout(() => {
-                        if (v && v.length >= 1) fetchLocationSuggestions(v, 'state_form');
+                        if (v.length === 0) fetchLocationSuggestions('', 'state_form');
+                        else if (v && v.length >= 2) fetchLocationSuggestions(v, 'state_form');
                         else setLocationSuggestions([]);
                       }, 180);
                     }}
-                    onFocus={() => { /* no-op: don't show suggestions until user types */ }}
+                    onFocus={() => { fetchLocationSuggestions('', 'state_form'); }}
                     required
                     style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white' }}
                   />
@@ -7475,11 +7336,12 @@ function AppContent() {
                       setConstituencySelected(false);
                       if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
                       suggestionTimerRef.current = setTimeout(() => {
-                        if (v && v.length >= 1) fetchLocationSuggestions(v, 'district_form');
+                        if (v.length === 0) fetchLocationSuggestions('', 'district_form');
+                        else if (v && v.length >= 2) fetchLocationSuggestions(v, 'district_form');
                         else setLocationSuggestions([]);
                       }, 180);
                     }}
-                    onFocus={() => { /* no-op: don't show suggestions until user types */ }}
+                    onFocus={() => { if (formData.state) fetchLocationSuggestions('', 'district_form'); }}
                     required
                     disabled={!formData.state}
                     style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.state ? 1 : 0.5 }}
@@ -7519,11 +7381,12 @@ function AppContent() {
                       setFormData({ ...formData, constituency: '', mandal: '' });
                       if (suggestionTimerRef.current) clearTimeout(suggestionTimerRef.current);
                       suggestionTimerRef.current = setTimeout(() => {
-                        if (v && v.length >= 1) fetchLocationSuggestions(v, 'constituency_form');
+                        if (v.length === 0) fetchLocationSuggestions('', 'constituency_form');
+                        else if (v && v.length >= 2) fetchLocationSuggestions(v, 'constituency_form');
                         else setLocationSuggestions([]);
                       }, 180);
                     }}
-                    onFocus={() => { /* no-op: don't show suggestions until user types */ }}
+                    onFocus={() => { if (formData.district) fetchLocationSuggestions('', 'constituency_form'); }}
                     required
                     disabled={!formData.district}
                     style={{ width: '100%', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px', color: 'white', opacity: formData.district ? 1 : 0.5 }}

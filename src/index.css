@@ -1,19 +1,33 @@
+/* Reset basic spacing and box sizing */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* Make the whole app take full screen height */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Default body styling */
 body {
-  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #000; /* prevents white flashes behind gradient */
 }
 
-#root {
-  width: 100%;
-  height: auto;
+/* Optional: make images responsive */
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Remove default button/input styling inconsistencies */
+button, input {
+  font-family: inherit;
 }
