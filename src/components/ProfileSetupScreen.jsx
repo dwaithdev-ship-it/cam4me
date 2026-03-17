@@ -5,15 +5,13 @@ function ProfileSetupScreen({ initialProfile = {}, onComplete = () => {}, autofi
   const [profile, setProfile] = useState({
     name: autofillName || initialProfile.name || '',
     mobile: autofillMobile || initialProfile.mobile || '',
-    city: initialProfile.city || '',
-    category: initialProfile.category || '',
     photo: initialProfile.photo || ''
   })
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
 
-  const canContinue = !!profile.photo && !!profile.city && !!profile.category
+  const canContinue = !!profile.photo
 
   const compressImage = (dataUrl, maxWidth = 800, quality = 0.8) =>
     new Promise((resolve) => {
@@ -78,7 +76,7 @@ function ProfileSetupScreen({ initialProfile = {}, onComplete = () => {}, autofi
   const handleContinue = async () => {
     setError('')
     if (!profile.name) return setError('Please enter your full name.')
-    if (!canContinue) return setError('Please add a photo, city and category.')
+    if (!canContinue) return setError('Please add a photo.')
 
     try {
       let photoUrl = profile.photo
@@ -99,7 +97,7 @@ function ProfileSetupScreen({ initialProfile = {}, onComplete = () => {}, autofi
 
       <div className="content">
         <div className="header-row"><img className="logo" src="/logo_camera.png" alt="Logo" /></div>
-        <div className="ad-section">Sponsored Ad</div>
+        <div className="ad-section" style={{ marginTop: '20px' }}>Sponsored Ad</div>
 
         <div className="photo-upload-wrapper">
           <div className="photo-circle" role="button" tabIndex={0} onClick={handleTakePhoto} title="Tap to take a photo">
@@ -111,7 +109,7 @@ function ProfileSetupScreen({ initialProfile = {}, onComplete = () => {}, autofi
 
           {/* small logo badge attached to avatar */}
           <button type="button" className="avatar-badge" onClick={handleChooseFromLibrary} aria-label="Upload photo">
-            <img src="/logo_camera.png" alt="camera" />
+            <img src="/logo_bubble.png" alt="camera" />
           </button>
         </div>
 
@@ -121,12 +119,6 @@ function ProfileSetupScreen({ initialProfile = {}, onComplete = () => {}, autofi
 
           <label className="field-label">Mobile</label>
           <input className="blank-input" name="mobile" value={profile.mobile} onChange={handleChange} placeholder="Mobile" readOnly />
-
-          <label className="field-label">City</label>
-          <input className="blank-input" name="city" value={profile.city} onChange={handleChange} placeholder="City" />
-
-          <label className="field-label">Category</label>
-          <input className="blank-input" name="category" value={profile.category} onChange={handleChange} placeholder="Category" />
         </div>
 
         {error && <div className="error-text">{error}</div>}

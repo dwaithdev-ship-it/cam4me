@@ -1,15 +1,14 @@
 ﻿
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import emailjs from '@emailjs/browser'
 import './App.css'
 import { database } from './database'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { Geolocation } from '@capacitor/geolocation'
-import { Device } from '@capacitor/device'
 import { Capacitor } from '@capacitor/core'
 import logoBubble from './assets/logo_bubble.png'
 import welcomeText from './assets/welcome_text.png'
 import logoCamera from './assets/logo_camera.png'
+import ProfileSetupScreen from './components/ProfileSetupScreen'
 
 // Placeholder function for Ad Manager password change
 function handleChangeAdManagerPassword() {
@@ -144,7 +143,7 @@ function AppContent() {
   const [sortBy, setSortBy] = useState('newest')
   const [isUploading, setIsUploading] = useState(false)
   const [whatsappToast, setWhatsappToast] = useState({ show: false, message: '', otp: '' });
-  const [currentUser, setCurrentUser] = useState(null)
+  const [currentUser, setCurrentUser] = useState({ uid: 'dummy_user', name: 'User' })
   const [userPost, setUserPost] = useState(null)
   const [communityPosts, setCommunityPosts] = useState([])
   const [profileData, setProfileData] = useState({ name: '', photo: null, city: '', category: '' })
@@ -156,11 +155,6 @@ function AppContent() {
   const [changePasswordData, setChangePasswordData] = useState({ newPassword: '', confirmPassword: '' })
   const [resetPasswordData, setResetPasswordData] = useState({ newPassword: '', confirmPassword: '' })
   const [deviceId, setDeviceId] = useState(null)
-  const [emailjsConfig, setEmailjsConfig] = useState({
-    serviceId: 'service_t1j33qg',
-    templateId: 'template_sdigm2m',
-    publicKey: 'GnR8Bmkj-OqAPPNQ8'
-  })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -589,6 +583,11 @@ function AppContent() {
       fetchCities();
       syncMasterData();
     }
+    if (currentScreen === 'city_category') {
+      // Ensure city and category data is loaded
+      fetchCities();
+      syncMasterData();
+    }
     if (currentScreen === 'edit_profile') {
       // Ensure dropdown data is available for edit profile
       fetchStates();
@@ -965,7 +964,7 @@ function AppContent() {
             applyProfileData(profile);
 
             // Auto-navigate to feed for logged-in users
-            if (['welcome_mobile', 'signin', 'signup_options', 'terms'].includes(currentScreen)) {
+            if (['welcome_mobile', 'signin'].includes(currentScreen)) {
               setCurrentScreen('feed');
             }
             // If setup_completed is false, update it in background
@@ -1057,7 +1056,7 @@ function AppContent() {
   useEffect(() => {
     const refreshLocalData = async () => {
       // Only poll if on screens that need community data
-      const needsData = ['feed', 'search', 'admin_dashboard', 'ad_manager_dashboard', 'admin_users', 'profile_setup'].includes(currentScreen);
+      const needsData = ['feed', 'search', 'admin_dashboard', 'ad_manager_dashboard', 'admin_users', 'profile'].includes(currentScreen);
       if (!needsData) return;
 
       try {
@@ -1285,35 +1284,14 @@ function AppContent() {
   };
 
   const handleAcceptTerms = async () => {
-    console.log('[Terms] Accept clicked. isNewSignupFlow:', isNewSignupFlow);
+    console.log('[Terms] Accept clicked.');
     if (!hasScrolledTerms) {
       alert("Please scroll through the entire Terms & Conditions to accept.");
       return;
     }
 
     try {
-      if (isNewSignupFlow) {
-        console.log('[Terms] New signup flow, navigating to user details form');
-        setCurrentScreen('form');
-        return;
-      }
-
-      // If user is logged in, we check their Firestore data
-      if (profileData.name && selectedCity && selectedCategory) {
-        console.log('[Terms] Existing user detected, navigating to feed');
-        await saveSessionData('feed', true);
-        setCurrentScreen('feed');
-        return;
-      }
-
-      // Fallback/Regular flow navigation
-      console.log('[Terms] Regular flow, navigating to user details form');
-
-      // Mark onboarding as started
-      localStorage.setItem('onboarding_complete', 'true');
-      setHasCompletedOnboarding(true);
-
-      await saveSessionData('form');
+      console.log('[Terms] Navigating to user details form');
       setCurrentScreen('form');
     } catch (err) {
       console.error('[Terms] Error in handleAcceptTerms:', err);
@@ -1674,7 +1652,7 @@ function AppContent() {
 
       // Save and navigate
       await saveSessionData('location');
-      setPreviousScreen('profile_setup');
+      setPreviousScreen('profile');
       setCurrentScreen('location');
     } catch (err) {
       console.error('Error saving profile:', err);
@@ -2012,11 +1990,9 @@ function AppContent() {
     }
 
     if (isNewSignupFlow && !currentUser) {
-      setCurrentScreen('signup_options');
+      setCurrentScreen('profile_setup');
       return;
     }
-
-    if (!currentUser) return alert('Please sign in first');
 
     try {
       // Upload profile photo to ImageKit
@@ -2046,11 +2022,7 @@ function AppContent() {
         setProfileData(prev => ({ ...prev, photo: photoUrl }));
       }
 
-      if (isNewSignupFlow) {
-        setCurrentScreen('signup_options');
-      } else {
-        setCurrentScreen('newpost');
-      }
+      setCurrentScreen('city_category');
     } catch (err) {
       alert("Failed to save profile: " + err.message);
     }
@@ -2982,11 +2954,29 @@ function AppContent() {
       </div>
     )
   }
-  // 6th Screen: Profile Page (Setup)
-  if (currentScreen === 'profile_setup') {
+  // 5th Screen: Profile Page (Setup)
+  if (true) {
+    const PROFILE_SETUP_CITIES = [
+      'Adilabad','Adoni','Amalapuram','Anantapur','Bellampalle','Bhimavaram','Bhongir','Bodhan',
+      'Chirala','Chittoor','Dharmavaram','Eluru','Gadwal','Guntur','Gudivada','Hindupur','Hyderabad',
+      'Jagtial','Kadapa','Kamareddy','Karimnagar','Kavali','Khammam','Kothagudem','Kurnool','Machilipatnam',
+      'Madanapalle','Mahbubnagar','Mancherial','Medak','Miryalaguda','Nagarkurnool','Nalgonda','Nandyal',
+      'Narasaraopet','Nellore','Nizamabad','Ongole','Palwancha','Proddatur','Rajahmundry','Ramagundam',
+      'Sangareddy','Siddipet','Srikakulam','Suryapet','Tadepalligudem','Tenali','Tirupati','Vikarabad',
+      'Vijayawada','Visakhapatnam','Vizianagaram','Wanaparthy','Warangal'
+    ];
+    const PROFILE_SETUP_CATEGORIES = [
+      'Cameras & Drone',
+      'Video Editing & Album Design',
+      'Printing Lab',
+      'Human Resources'
+    ];
+
     return (
       <div className="profile-setup-bg">
         <div className="profile-setup-main">
+          <img src={logoBubble} alt="Logo" className="profile-setup-top-logo" />
+
           {/* Ad Banner */}
           <div className="profile-setup-ad-wrap">
             <img
@@ -2998,7 +2988,7 @@ function AppContent() {
           </div>
 
           {/* Profile Image + Camera */}
-          <div className="profile-setup-avatar-wrap">
+          <div className="profile-setup-avatar-wrap" onClick={handleTakePhoto} role="button" tabIndex={0} aria-label="Upload photo">
             <div className="profile-setup-avatar">
               {profileData.photo ? (
                 <img src={profileData.photo} alt="Profile" className="profile-setup-avatar-img" />
@@ -3012,7 +3002,7 @@ function AppContent() {
                 aria-label="Upload photo"
                 onClick={handleTakePhoto}
               >
-                <img src={logoCamera} alt="camera" style={{ width: '100%', height: '100%' }} />
+                <img src={logoCamera} alt="camera" />
               </button>
             </div>
           </div>
@@ -3024,49 +3014,99 @@ function AppContent() {
             onSubmit={e => {
               e.preventDefault();
               if (!profileData.photo || !profileData.city || !profileData.category) return;
-              // ...submit logic...
+              setCurrentScreen('search');
             }}
           >
             <div>
-              <label className="profile-setup-label">ProfileName</label>
               <input
                 className="profile-setup-input"
-                value={formData.name || profileData.name || ''}
+                value={`Profile Name - ${profileData.name || ''}`}
                 readOnly
                 tabIndex={-1}
-                style={{ color: 'rgba(255,255,255,0.7)', cursor: 'not-allowed' }}
+                style={{ color: 'rgba(255,255,255,0.6)', cursor: 'not-allowed' }}
               />
             </div>
             <div>
-              <label className="profile-setup-label">Mobile</label>
               <input
                 className="profile-setup-input"
-                value={formData.mobile || profileData.mobile || ''}
+                value={`Mobile - ${profileData.mobile || ''}`}
                 readOnly
                 tabIndex={-1}
-                style={{ color: 'rgba(255,255,255,0.7)', cursor: 'not-allowed' }}
+                style={{ color: 'rgba(255,255,255,0.6)', cursor: 'not-allowed' }}
               />
             </div>
-            <div>
-              <label className="profile-setup-label">City</label>
-              <input
-                className="profile-setup-input"
-                value={profileData.city || ''}
-                onChange={e => setProfileData({ ...profileData, city: e.target.value })}
-                placeholder="City"
-                autoComplete="off"
-              />
+
+            <div className="profile-setup-field" onBlur={() => setTimeout(() => setShowCityList(false), 150)}>
+              <span className="profile-setup-field-prefix">City -</span>
+              <div className="profile-setup-field-inner">
+                <input
+                  className="profile-setup-input profile-setup-input--prefixed"
+                  value={profileData.city || ''}
+                  placeholder="Select city"
+                  autoComplete="off"
+                  onFocus={() => {
+                    setShowCityList(true);
+                    setCitySearch('');
+                  }}
+                  onChange={e => {
+                    setCitySearch(e.target.value);
+                    setProfileData({ ...profileData, city: e.target.value });
+                    setShowCityList(true);
+                  }}
+                />
+                {showCityList && (
+                  <div className="profile-setup-dropdown">
+                    {PROFILE_SETUP_CITIES.filter(c => c.toLowerCase().includes((citySearch || profileData.city || '').toLowerCase())).map(city => (
+                      <div
+                        key={city}
+                        className="profile-setup-dropdown-item"
+                        onMouseDown={() => {
+                          setProfileData({ ...profileData, city });
+                          setShowCityList(false);
+                          setCitySearch('');
+                        }}
+                      >
+                        {city}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="profile-setup-label">Category</label>
-              <input
-                className="profile-setup-input"
-                value={profileData.category || ''}
-                onChange={e => setProfileData({ ...profileData, category: e.target.value })}
-                placeholder="Category"
-                autoComplete="off"
-              />
+
+            <div className="profile-setup-field" onBlur={() => setTimeout(() => setShowCategoryList(false), 150)}>
+              <span className="profile-setup-field-prefix">Category -</span>
+              <div className="profile-setup-field-inner">
+                <input
+                  className="profile-setup-input profile-setup-input--prefixed"
+                  value={profileData.category || ''}
+                  placeholder="Select category"
+                  autoComplete="off"
+                  onFocus={() => setShowCategoryList(true)}
+                  onChange={e => {
+                    setProfileData({ ...profileData, category: e.target.value });
+                    setShowCategoryList(true);
+                  }}
+                />
+                {showCategoryList && (
+                  <div className="profile-setup-dropdown">
+                    {PROFILE_SETUP_CATEGORIES.filter(c => c.toLowerCase().includes((profileData.category || '').toLowerCase())).map(cat => (
+                      <div
+                        key={cat}
+                        className="profile-setup-dropdown-item"
+                        onMouseDown={() => {
+                          setProfileData({ ...profileData, category: cat });
+                          setShowCategoryList(false);
+                        }}
+                      >
+                        {cat}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
             <button
               className="profile-setup-continue"
               type="submit"
@@ -3080,216 +3120,6 @@ function AppContent() {
     );
   }
 
-  // 5th Screen: Sign-Up Options
-  if (currentScreen === 'signup_options') {
-    return (
-      <div className="app-container">
-        <div className="status-bar">
-          <img src={logoBubble} alt="logo" style={{ width: 44, height: 44 }} />
-        </div>
-
-        <div className="content">
-          <img src={(ads && ads[0] && ads[0].image) || logoCamera} alt="ad" className="ad-banner" />
-
-          <div style={{ height: 18 }} />
-
-          <div style={{ position: 'relative', width: 220, height: 220, margin: '0 auto' }}>
-            <div className="profile-circle" style={{ width: 220, height: 220 }}>
-              {profileData.photo ? (
-                <img src={profileData.photo} alt="profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }} />
-              )}
-            </div>
-
-            <button
-              className="camera-overlay"
-              onClick={() => setShowProfileImagePicker(true)}
-              title="Update photo"
-              style={{ position: 'absolute', right: -6, bottom: 6, border: 'none', background: 'transparent', cursor: 'pointer' }}
-            >
-              <img src={logoCamera} alt="camera" style={{ width: 52, height: 52 }} />
-            </button>
-          </div>
-
-          <div className="form" style={{ marginTop: 18, width: '100%', padding: '0 12px' }}>
-            <div className="form-group">
-              <label>ProfileName</label>
-              <input value={formData.name || profileData.name || ''} onChange={(e) => {}} placeholder="ProfileName" readOnly className="readonly-input" />
-            </div>
-
-            <div className="form-group">
-              <label>Mobill</label>
-              <input value={formData.mobile || profileData.mobile || ''} onChange={(e) => {}} placeholder="+91" readOnly className="readonly-input" />
-            </div>
-
-            <div className="form-group">
-              <label>City</label>
-              <input value={selectedCity || profileData.city || ''} onChange={(e) => { setSelectedCity(e.target.value); setProfileData({ ...profileData, city: e.target.value }); }} placeholder="City" />
-            </div>
-
-            <div className="form-group">
-              <label>Category</label>
-              <input value={selectedCategory || profileData.category || ''} onChange={(e) => { setSelectedCategory(e.target.value); setProfileData({ ...profileData, category: e.target.value }); }} placeholder="Category" />
-            </div>
-
-            <div style={{ marginTop: 18 }}>
-              <button
-                type="button"
-                className="continue-btn-custom"
-                onClick={() => {
-                  if (!profileData.name || !profileData.mobile) {
-                    alert('Please enter profile name and mobile');
-                    return;
-                  }
-                  setHasCompletedOnboarding(true);
-                  setCurrentScreen('feed');
-                }}
-              >
-                continue
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Sign In Screen
-  if (currentScreen === 'signin') {
-    return (
-      <div className="app-container">
-        <div className="status-bar">
-          <span className="time">{time}</span>
-        </div>
-
-        <div className="content">
-          <div className="camera-logo-gradient">
-            <img src={logoBubble} alt="Chatcam Logo" className="logo-image" />
-          </div>
-          <div style={{ width: '100%', maxWidth: 420, display: 'flex', justifyContent: 'flex-end', marginTop: -110, paddingRight: 10 }}>
-            <button type="button" className="help-btn-icon" onClick={() => setShowFullTermsModal(true)} title="View full terms">?</button>
-          </div>
-
-          <h1 className="auth-title">Sign In</h1>
-
-          <form onSubmit={handleSignIn} className="auth-form">
-            <div className="form-group">
-              <label>Email address</label>
-              <input
-                type="email"
-                name="email"
-                value={authData.email}
-                onChange={handleAuthChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={authData.password}
-                  onChange={handleAuthChange}
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'rgba(255,255,255,0.6)',
-                    cursor: 'pointer',
-                    padding: '4px'
-                  }}
-                >
-                  {showPassword ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                      <line x1="1" y1="1" x2="23" y2="23"></line>
-                    </svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                      <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="auth-submit-btn">Sign In</button>
-          </form>
-
-          <div style={{ textAlign: 'center', marginTop: '10px' }}>
-            <button type="button" className="link-btn" onClick={() => {
-              setResetStep('request')
-              setCurrentScreen('forgot_password')
-            }} style={{ color: '#FFD700', fontSize: '13px' }}>Forgot Password?</button>
-          </div>
-
-          {showFullTermsModal && (
-            <div className="terms-modal" onClick={() => setShowFullTermsModal(false)}>
-              <div className="terms-modal-card" onClick={(e) => e.stopPropagation()}>
-                <div className="terms-box" style={{ maxHeight: '70vh', marginBottom: 12 }}>
-                  <h3>Terms & Conditions</h3>
-                  <p className="terms-updated">Last updated: 4 February 2026</p>
-                  <div className="terms-content">
-                    <p>Please read these terms and conditions ("terms and conditions", "terms") carefully before using Chatcam mobile application ("app", "service") operated by Chatcam ("us", "we", "our").</p>
-
-                    <h4>1. Conditions of use</h4>
-                    <p>By using this app, you certify that you have read and reviewed this Agreement and that you agree to comply with its terms. If you do not want to be bound by the terms of this Agreement, you are advised to stop using the app accordingly. Chatcam only grants use and access of this app, its products, and its services to those who have accepted its terms.</p>
-
-                    <h4>2. Privacy policy</h4>
-                    <p>Before you continue using our app, we advise you to read our privacy policy regarding our user data collection. It will help you better understand our practices.</p>
-
-                    <h4>3. Age restriction</h4>
-                    <p>You must be at least 18 (eighteen) years of age before you can use this app. By using this app, you warrant that you are at least 18 years of age and you may legally adhere to this Agreement.</p>
-
-                    <h4>4. Intellectual property</h4>
-                    <p>You agree that all materials, products, and services provided on this app are the property of Chatcam, its affiliates, directors, officers, employees, agents, suppliers, or licensors including all copyrights, trade secrets, trademarks, patents, and other intellectual property.</p>
-
-                    <h4>5. User accounts</h4>
-                    <p>As a user of this app, you may be asked to register with us and provide private information. You are responsible for ensuring the accuracy of this information, and you are responsible for maintaining the safety and security of your identifying information. You are also responsible for all activities that occur under your account or password.</p>
-
-                    <h4>6. Applicable law</h4>
-                    <p>By using this app, you agree that the laws of our location, without regard to principles of conflict laws, will govern these terms and conditions, or any dispute of any sort that might come between Chatcam and you, or its business partners and associates.</p>
-
-                    <h4>7. Disputes</h4>
-                    <p>In the event of disputes, both parties agree to first attempt in good faith to resolve the dispute amicably through negotiation.</p>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <button className="auth-submit-btn" onClick={() => setShowFullTermsModal(false)}>OK</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-
-
-          <div className="auth-footer">
-            <span>Don't have an account? </span>
-            <button type="button" className="link-btn" onClick={() => setCurrentScreen('welcome_mobile')}>Sign up</button>
-          </div>
-
-          <div className="staff-login-links" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '15px', fontSize: '12px' }}>
-            <button type="button" className="link-btn" onClick={() => setCurrentScreen('admin_login')} style={{ color: '#666' }}>Admin Login</button>
-            <span style={{ color: '#ccc' }}>|</span>
-            <button type="button" className="link-btn" onClick={() => setCurrentScreen('ad_manager_login')} style={{ color: '#666' }}>Ad Manager Login</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Show Terms & Conditions after authentication
   if (currentScreen === 'terms') {
@@ -3419,89 +3249,7 @@ function AppContent() {
 
 
   // Location Permission Screen
-  if (currentScreen === 'location') {
-    return (
-      <div className="app-container">
-        <div className="status-bar">
-          <span className="time">{time}</span>
-        </div>
 
-        <div className="content location-content">
-          <div className="profile-logo-small">
-            <img src="/cam4me_logo.png" alt="Chatcam" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-          </div>
-
-          <div className="location-permission-card">
-            <div className="location-icon">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-              </svg>
-            </div>
-
-            <h2 className="location-title">Allow Maps to access this device's precise location?</h2>
-
-            <div className="location-options">
-              <div
-                className={`location-option ${preciselocation ? 'active' : ''}`}
-                onClick={() => setPreciseLocation(true)}
-              >
-                <div className="map-visual precise">
-                  <svg width="100" height="100" viewBox="0 0 100 100">
-                    <defs>
-                      <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#E0E0E0" strokeWidth="0.5" />
-                      </pattern>
-                    </defs>
-                    <rect width="100" height="100" fill="url(#grid)" />
-                    <circle cx="50" cy="50" r="8" fill="#1976D2" />
-                    <circle cx="50" cy="50" r="15" fill="none" stroke="#1976D2" strokeWidth="2" opacity="0.3" />
-                  </svg>
-                </div>
-                <span>Precise</span>
-              </div>
-
-              <div
-                className={`location-option ${!preciselocation ? 'active' : ''}`}
-                onClick={() => setPreciseLocation(false)}
-              >
-                <div className="map-visual approximate">
-                  <svg width="100" height="100" viewBox="0 0 100 100">
-                    <path d="M20 80 Q30 60, 40 70 T60 65 T80 75" stroke="#FFA726" strokeWidth="2" fill="none" />
-                    <path d="M30 50 Q40 45, 50 48 T70 52" stroke="#FFA726" strokeWidth="2" fill="none" />
-                    <path d="M15 30 L85 30" stroke="#90CAF9" strokeWidth="3" />
-                    <circle cx="45" cy="60" r="6" fill="#1976D2" />
-                    <circle cx="55" cy="55" r="6" fill="#1976D2" />
-                  </svg>
-                </div>
-                <span>Approximate</span>
-              </div>
-            </div>
-
-            <div className="location-buttons">
-              <button
-                className="location-btn primary"
-                onClick={() => handleLocationPermission('allow-always')}
-              >
-                While using the app
-              </button>
-              <button
-                className="location-btn secondary"
-                onClick={() => handleLocationPermission('allow-once')}
-              >
-                Only this time
-              </button>
-              <button
-                className="location-btn tertiary"
-                onClick={() => handleLocationPermission('deny')}
-              >
-                Don't allow
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
   // City and Category Search Screen
   if (currentScreen === 'search') {
     const topAd = getRandomAd()
@@ -3517,7 +3265,7 @@ function AppContent() {
           <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginBottom: '2px' }}>
             <button
               onClick={() => {
-                if (previousScreen === 'profile_setup') {
+                if (previousScreen === 'profile') {
                   setCurrentScreen('location');
                 } else if (previousScreen === 'menu') {
                   setCurrentScreen('menu');
@@ -3864,155 +3612,6 @@ function AppContent() {
 
 
   // Admin Login Screen
-  if (currentScreen === 'admin_login') {
-    return (
-      <div className="app-container">
-        <div className="status-bar">
-          <span className="time">{time}</span>
-        </div>
-
-        <div className="content">
-          <div className="camera-logo-gradient">
-            <img src="/logo_camera.png" alt="Admin Logo" style={{ width: '100px', height: '100px', objectFit: 'contain', filter: 'hue-rotate(0deg)' }} />
-          </div>
-
-          <h1 className="auth-title" style={{ color: '#FF4444' }}>Admin Login</h1>
-          <p style={{ textAlign: 'center', color: '#666', marginBottom: '20px' }}>Restricted Access</p>
-
-          <form onSubmit={handleAdminLogin} className="auth-form">
-            <div className="form-group">
-              <label>Admin Email</label>
-              <input
-                type="email"
-                name="email"
-                value={adminAuth.email}
-                onChange={handleAdminAuthChange}
-                required
-                placeholder="Enter email"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Password</label>
-              <div className="password-input-wrapper">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={adminAuth.password}
-                  onChange={handleAdminAuthChange}
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.82l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.74-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" />
-                    </svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="auth-submit-btn" style={{ background: 'linear-gradient(to right, #FF4444, #CC0000)' }}>Login as Admin</button>
-          </form>
-
-          <div style={{ textAlign: 'center', marginTop: '10px' }}>
-            <button type="button" className="link-btn" onClick={() => {
-              setResetStep('request')
-              setCurrentScreen('forgot_password')
-            }} style={{ color: '#FF4444', fontSize: '13px' }}>Forgot Password?</button>
-          </div>
-
-          <div className="auth-footer">
-            <button type="button" className="link-btn" onClick={() => setCurrentScreen('signin')}>Back to User Login</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Ad Manager Login Screen
-  if (currentScreen === 'ad_manager_login') {
-    return (
-      <div className="app-container">
-        <div className="status-bar">
-          <span className="time">{time}</span>
-        </div>
-
-        <div className="content">
-          <div className="camera-logo-gradient">
-            <img src="/logo_camera.png" alt="Ad Manager Logo" style={{ width: '100px', height: '100px', objectFit: 'contain', filter: 'hue-rotate(45deg)' }} />
-          </div>
-
-          <h1 className="auth-title" style={{ color: '#FFD700' }}>Ad Manager</h1>
-          <p style={{ textAlign: 'center', color: '#666', marginBottom: '20px' }}>Advertising Portal</p>
-
-          <form onSubmit={handleAdManagerLogin} className="auth-form">
-            <div className="form-group">
-              <label>Manager Email</label>
-              <input
-                type="email"
-                name="email"
-                value={adManagerAuth.email}
-                onChange={handleAdManagerAuthChange}
-                required
-                placeholder="Enter email"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Password</label>
-              <div className="password-input-wrapper">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={adManagerAuth.password}
-                  onChange={handleAdManagerAuthChange}
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.82l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.74-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" />
-                    </svg>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="auth-submit-btn" style={{ background: 'linear-gradient(to right, #FFD700, #FFA500)' }}>Login as Manager</button>
-          </form>
-
-          <div style={{ textAlign: 'center', marginTop: '10px' }}>
-            <button type="button" className="link-btn" onClick={() => {
-              setResetStep('request')
-              setCurrentScreen('forgot_password')
-            }} style={{ color: '#FFD700', fontSize: '13px' }}>Forgot Password?</button>
-          </div>
-
-          <div className="auth-footer">
-            <button type="button" className="link-btn" onClick={() => setCurrentScreen('signin')}>Back to User Login</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // Forgot Password Screen
   if (currentScreen === 'forgot_password') {
     return (
@@ -6068,7 +5667,7 @@ function AppContent() {
                   cursor: 'pointer'
                 }}
               >
-                <img src="/logo_camera.png" style={{ width: '22px' }} alt="edit" />
+                <img src="/logo_bubble.png" style={{ width: '32px' }} alt="edit" />
               </div>
             </div>
 
@@ -6537,6 +6136,9 @@ function AppContent() {
                     await database.saveUser(updatedData);
                     alert('Profile Updated Successfully');
                     setCurrentScreen('menu'); // Return to menu after save
+                  } else if (isNewSignupFlow) {
+                    // Onboarding flow: go to profile setup
+                    setCurrentScreen('profile');
                   }
                 }}
                 style={{
@@ -7526,6 +7128,114 @@ function AppContent() {
           </div>
         )}
       </>
+    );
+  }
+
+  // Profile Setup Screen
+  if (currentScreen === 'profile_setup') {
+    return (
+      <ProfileSetupScreen
+        autofillName={formData.name}
+        autofillMobile={formData.mobile}
+        onComplete={async (profile) => {
+          setProfileData(profile);
+          setCurrentScreen('city_category');
+        }}
+      />
+    );
+  }
+
+  // City & Category Selection Screen
+  if (currentScreen === 'city_category') {
+    return (
+      <div className="app-container">
+        <div className="status-bar">
+          <span className="time">{time}</span>
+        </div>
+
+        <div className="content">
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', marginBottom: '6px', justifyContent: 'center' }}>
+            <div className="logo-container" style={{ margin: 0 }}>
+              <img src="/logo_bubble.png" alt="Chatcam Logo" className="logo-image" />
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <h2 style={{ color: 'white', fontSize: '24px', margin: '0' }}>Select Your City & Category</h2>
+            <p style={{ color: 'rgba(255,255,255,0.7)', margin: '8px 0 0 0' }}>Choose your location and interests</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ color: 'white', fontSize: '16px', marginBottom: '8px', display: 'block' }}>City</label>
+              <select
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  color: 'white',
+                  fontSize: '16px'
+                }}
+              >
+                <option value="">Select City</option>
+                {masterData.cities && masterData.cities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ color: 'white', fontSize: '16px', marginBottom: '8px', display: 'block' }}>Category</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  color: 'white',
+                  fontSize: '16px'
+                }}
+              >
+                <option value="">Select Category</option>
+                {masterData.categories && masterData.categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={async () => {
+                if (!selectedCity || !selectedCategory) {
+                  alert('Please select both city and category');
+                  return;
+                }
+                // Save to profile
+                try {
+                  await database.updateProfile({
+                    selected_city: selectedCity,
+                    selected_category: selectedCategory,
+                    setup_completed: true
+                  });
+                  setCurrentScreen('feed');
+                } catch (err) {
+                  alert('Failed to save: ' + err.message);
+                }
+              }}
+              className="continue-btn"
+              style={{ marginTop: '20px' }}
+            >
+              Continue to Feed
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
